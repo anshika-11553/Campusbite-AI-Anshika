@@ -505,7 +505,7 @@ class StudentApiService implements IStudentApiService {
             description: 'Toasted French baguette slices spread with garlic butter & topped with bubbly mozzarella cheese.',
             priceInINR: 85,
             category: 'snacks',
-            imageUrl: 'https://images.unsplash.com/photo-1573140247632-f8fd74997d5c?auto=format&fit=crop&w=600&q=80',
+            imageUrl: 'https://images.unsplash.com/photo-1572449043416-55f4685c9bb7?auto=format&fit=crop&w=600&q=80',
             isAvailable: true,
             preparationTimeMinutes: 8,
             isVegetarian: true,

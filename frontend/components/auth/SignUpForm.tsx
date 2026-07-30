@@ -199,7 +199,7 @@ export const SignUpForm: React.FC = () => {
         rightIcon={<ArrowRight className="h-4 w-4" />}
         className="w-full mt-2 font-semibold text-base py-3"
       >
-        Create Account as {selectedRole.toUpperCase()}
+        Create Account as {selectedRole === 'chief' ? 'HEAD CHEF' : selectedRole.toUpperCase()}
       </Button>
 
       <div className="text-center pt-2 text-xs text-slate-500">
