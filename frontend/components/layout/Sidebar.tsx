@@ -27,6 +27,9 @@ import {
   ChefHat,
   Package,
   Sparkles,
+  ShoppingCart,
+  Ticket,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -50,9 +53,11 @@ export const getNavItemsForRole = (role: UserRole): NavItem[] => {
       return [
         { label: 'Dashboard', href: '/student', icon: LayoutDashboard, section: 'main' },
         { label: 'Menu Explorer', href: '/student/menu', icon: UtensilsCrossed, section: 'main', badge: '35+' },
+        { label: 'Cart', href: '/student/checkout', icon: ShoppingCart, section: 'main' },
+        { label: 'Active Order', href: '/student', icon: Ticket, section: 'main', badge: 'Live' },
         { label: 'Order History', href: '/student/orders', icon: History, section: 'main' },
         { label: 'Favorites', href: '/student/favorites', icon: Heart, section: 'main' },
-        { label: 'Rewards', href: '/student/rewards', icon: Gift, section: 'main', badge: '120 pts' },
+        { label: 'Rewards', href: '/student/rewards', icon: Gift, section: 'main', badge: '340 pts' },
         { label: 'Profile', href: '/student/profile', icon: User, section: 'account' },
         { label: 'Settings', href: '/student/settings', icon: Settings, section: 'account' },
       ];
@@ -86,7 +91,7 @@ export const getNavItemsForRole = (role: UserRole): NavItem[] => {
         { label: 'Vendors', href: '/admin/vendors', icon: Store, section: 'main' },
         { label: 'Head Chefs', href: '/admin/chefs', icon: ChefHat, section: 'main' },
         { label: 'Orders', href: '/admin/orders', icon: Package, section: 'main' },
-        { label: 'Reports', href: '/admin/reports', icon: BarChart3, section: 'main' },
+        { label: 'Reports', href: '/admin/reports', icon: FileSpreadsheet, section: 'main' },
         { label: 'Settings', href: '/admin/settings', icon: Settings, section: 'account' },
       ];
 
@@ -115,7 +120,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const roleLabelMap: Record<UserRole, string> = {
     student: 'Student Portal',
     vendor: 'Vendor Outlet',
-    chief: 'Head Chef',
+    chief: 'Head Chef Portal',
     admin: 'System Admin',
   };
 
@@ -186,7 +191,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="space-y-1">
               {!isCollapsed && (
                 <p className="px-3 text-[10px] uppercase font-bold tracking-wider text-emerald-300/60 mb-2">
-                  Main Menu
+                  Navigation
                 </p>
               )}
               {mainNavItems.map((item) => {
@@ -240,7 +245,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="space-y-1 pt-3 border-t border-emerald-800/40">
               {!isCollapsed && (
                 <p className="px-3 text-[10px] uppercase font-bold tracking-wider text-emerald-300/60 mb-2">
-                  Account & System
+                  Account & Profile
                 </p>
               )}
               {accountNavItems.map((item) => {
