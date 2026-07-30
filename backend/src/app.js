@@ -6,6 +6,7 @@ import morgan from "morgan";
 import authRoutes from "./routes/auth.routes.js";
 import menuRoutes from "./routes/menu.routes.js";
 import orderRoutes from "./routes/order.routes.js";
+import vendorRoutes from "./routes/vendor.routes.js";
 
 const app = express();
 
@@ -53,6 +54,12 @@ app.use("/api/menu", menuRoutes);
 // Order Routes
 // ==========================
 app.use("/api/orders", orderRoutes);
+
+// ==========================
+// Vendor Routes
+// ==========================
+app.use("/api/vendor", vendorRoutes);
+
 
 // ==========================
 // 404 Handler

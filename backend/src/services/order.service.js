@@ -4,6 +4,11 @@ import {
   createDailyToken,
   createOrder,
   createOrderItems,
+  getOrdersByUser,
+  getOrderById,
+  getActiveVendorOrders,
+  updateOrderStatus,
+  getVendorDashboardData,
 } from "../repositories/order.repository.js";
 
 // ==========================
@@ -201,12 +206,192 @@ totalAmount = Number((totalAmount + subtotal).toFixed(2));
   // Return Response
   // ==========================
   return {
-  order_id: order.id,
-  token_number: token.token_number,
-  total_amount: totalAmount,
-  estimated_wait_minutes: estimatedWaitMinutes,
-  status: order.status,
-  created_at: order.created_at,
-  items: orderItems,
+    order_id: order.id,
+    token_number: token.token_number,
+    total_amount: totalAmount,
+    estimated_wait_minutes: estimatedWaitMinutes,
+    status: order.status,
+    created_at: order.created_at,
+    items: orderItems,
+  };
 };
+
+// ==========================
+// Get Student Order History Service
+// ==========================
+export const getStudentOrderHistory = async (userId) => {
+  if (!userId) {
+    throw new Error("User ID is required");
+  }
+
+  const orders = await getOrdersByUser(userId);
+
+  return orders.map((order) => ({
+    id: order.id,
+    token_number: order.daily_tokens ? order.daily_tokens.token_number : null,
+    status: order.status,
+    total_amount: Number(order.total_amount),
+    created_at: order.created_at,
+    estimated_wait_minutes: order.estimated_wait_minutes,
+  }));
 };
+
+// ==========================
+// Get Student Order Details Service
+// ==========================
+export const getStudentOrderDetails = async (orderId, userId) => {
+  if (!orderId) {
+    const error = new Error("Order ID is required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const order = await getOrderById(orderId);
+
+  if (!order) {
+    const error = new Error("Order not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (order.user_id !== userId) {
+    const error = new Error("Access denied to this order");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const items = (order.order_items || []).map((item) => ({
+    menu_item_id: item.menu_items?.id || null,
+    menu_name: item.menu_items?.name || "Unknown Item",
+    category: item.menu_items?.category || null,
+    quantity: item.quantity,
+    unit_price: Number(item.unit_price),
+    subtotal: Number(item.subtotal),
+    estimated_prep_time: item.menu_items?.prep_time || 0,
+  }));
+
+  return {
+    order_id: order.id,
+    token_number: order.daily_tokens ? order.daily_tokens.token_number : null,
+    status: order.status,
+    total_amount: Number(order.total_amount),
+    estimated_wait_minutes: order.estimated_wait_minutes,
+    created_at: order.created_at,
+    items,
+  };
+};
+
+// ==========================
+// Get Vendor Active Orders Service
+// ==========================
+export const getVendorOrders = async () => {
+  const orders = await getActiveVendorOrders();
+
+  // Sort by Token Number ASC, then Created Time ASC
+  orders.sort((a, b) => {
+    const tokenA = a.daily_tokens?.token_number ?? Infinity;
+    const tokenB = b.daily_tokens?.token_number ?? Infinity;
+
+    if (tokenA !== tokenB) {
+      return tokenA - tokenB;
+    }
+
+    return new Date(a.created_at) - new Date(b.created_at);
+  });
+
+  return orders.map((order) => ({
+    order_id: order.id,
+    token_number: order.daily_tokens ? order.daily_tokens.token_number : null,
+    student_name: order.users?.full_name || "Unknown Student",
+    student_email: order.users?.email || "Unknown Email",
+    total_amount: Number(order.total_amount),
+    estimated_wait_minutes: order.estimated_wait_minutes,
+    status: order.status,
+    created_at: order.created_at,
+    items: (order.order_items || []).map((item) => ({
+      menu_item_id: item.menu_items?.id || null,
+      menu_name: item.menu_items?.name || "Unknown Item",
+      category: item.menu_items?.category || null,
+      quantity: item.quantity,
+      unit_price: Number(item.unit_price),
+      subtotal: Number(item.subtotal),
+      prep_time: item.menu_items?.prep_time || 0,
+    })),
+  }));
+};
+
+// ==========================
+// Update Order Status Service
+// ==========================
+export const updateOrderStatusService = async (orderId, newStatus) => {
+  const VALID_STATUSES = [
+    "PENDING_PAYMENT",
+    "PAID",
+    "ACCEPTED",
+    "PREPARING",
+    "READY",
+    "COMPLETED",
+    "CANCELLED",
+  ];
+
+  if (
+    !newStatus ||
+    typeof newStatus !== "string" ||
+    !VALID_STATUSES.includes(newStatus)
+  ) {
+    const error = new Error(
+      `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}`
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const order = await getOrderById(orderId);
+
+  if (!order) {
+    const error = new Error("Order not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const ALLOWED_TRANSITIONS = {
+    PENDING_PAYMENT: ["PAID", "CANCELLED"],
+    PAID: ["ACCEPTED", "CANCELLED"],
+    ACCEPTED: ["PREPARING", "CANCELLED"],
+    PREPARING: ["READY", "CANCELLED"],
+    READY: ["COMPLETED"],
+    COMPLETED: [],
+    CANCELLED: [],
+  };
+
+  const allowedNext = ALLOWED_TRANSITIONS[order.status] || [];
+
+  if (!allowedNext.includes(newStatus)) {
+    const error = new Error(
+      `Cannot transition order status from '${order.status}' to '${newStatus}'`
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const updatedOrder = await updateOrderStatus(orderId, newStatus);
+
+  return {
+    order_id: updatedOrder.id,
+    old_status: order.status,
+    new_status: updatedOrder.status,
+    updated_at: updatedOrder.updated_at || new Date().toISOString(),
+  };
+};
+
+// ==========================
+// Get Vendor Dashboard Service
+// ==========================
+export const getVendorDashboard = async () => {
+  return await getVendorDashboardData();
+};
+
+
+
+
+
