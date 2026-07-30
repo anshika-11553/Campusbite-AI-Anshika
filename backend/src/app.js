@@ -1,3 +1,4 @@
+import authRoutes from "./routes/auth.routes.js";
 import menuRoutes from "./routes/menu.routes.js";
 import express from "express";
 import cors from "cors";
@@ -39,6 +40,10 @@ app.get("/health", (req, res) => {
 // Menu Routes
 // ==========================
 app.use("/api/menu", menuRoutes);
+// ==========================
+// Authentication Routes
+// ==========================
+app.use("/api/auth", authRoutes);
 
 // ==========================
 // 404 Handler
