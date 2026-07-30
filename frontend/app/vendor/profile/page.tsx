@@ -144,6 +144,28 @@ export default function VendorProfilePage() {
             </div>
           )}
         </Card>
+
+        {/* Payment Settings Card */}
+        <Card className="p-6 space-y-3 border-emerald-200 bg-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
+                💳 Vendor UPI Payment Settings & QR Code
+              </h3>
+              <p className="text-xs text-slate-500">
+                Manage your outlet personal payment QR image, UPI ID handle, and student verification queue.
+              </p>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => window.location.href = '/vendor/settings'}
+              className="bg-[#054A36] text-white font-extrabold text-xs"
+            >
+              Open Payment Settings
+            </Button>
+          </div>
+        </Card>
       </div>
     </DashboardLayout>
   );

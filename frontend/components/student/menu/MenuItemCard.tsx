@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import Image from 'next/image';
+import { SafeImage } from '@/components/ui/SafeImage';
 import { MenuItem } from '@/types/student';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -14,25 +14,23 @@ interface MenuItemCardProps {
   onToggleFavorite?: (itemId: string) => void;
 }
 
-const DEFAULT_FALLBACK_IMAGE = '/images/food/paneer_masala.jpg';
+const DEFAULT_FALLBACK_IMAGE = '/images/menu/default-food.jpg';
 
 export const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({ item, onAddToCart, onToggleFavorite }) => {
   const [quantity, setQuantity] = useState<number>(1);
-  const [imgSrc, setImgSrc] = useState<string>(item.imageUrl || DEFAULT_FALLBACK_IMAGE);
 
   return (
     <Card className="p-0 flex flex-col justify-between hover:shadow-xl transition-all duration-300 group border-slate-200/80 hover:-translate-y-1 bg-white relative overflow-hidden rounded-2xl">
       {/* Image Banner Container */}
       <div className="relative w-full h-48 overflow-hidden bg-slate-100">
-        <Image
-          src={imgSrc}
+        <SafeImage
+          src={item.imageUrl || DEFAULT_FALLBACK_IMAGE}
+          fallbackSrc={DEFAULT_FALLBACK_IMAGE}
           alt={item.name}
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           className="object-cover group-hover:scale-108 transition-transform duration-500 ease-out"
-          onError={() => setImgSrc(DEFAULT_FALLBACK_IMAGE)}
           loading="lazy"
-          unoptimized
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-slate-900/10 to-transparent pointer-events-none" />
 

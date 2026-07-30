@@ -28,8 +28,8 @@ export const OrderAgainWidget: React.FC<OrderAgainWidgetProps> = ({ lastOrder })
         priceInINR: orderItem.priceInINR,
         category: 'main_course',
         imageUrl: orderItem.itemName.includes('Pizza')
-          ? 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&q=80'
-          : 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&q=80',
+          ? '/images/food/paneer_masala.jpg'
+          : '/images/menu/default-food.jpg',
         isAvailable: true,
         preparationTimeMinutes: 10,
         isPopular: true,

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image, { ImageProps } from 'next/image';
 
-const DEFAULT_FALLBACK_IMAGE = '/images/food/default-food.jpg';
+const DEFAULT_FALLBACK_IMAGE = '/images/menu/default-food.jpg';
 
 interface SafeImageProps extends Omit<ImageProps, 'src'> {
   src?: string | null;
