@@ -14,6 +14,7 @@ import { MenuGrid } from '@/components/student/menu/MenuGrid';
 import { QueueTracker } from '@/components/student/tracker/QueueTracker';
 import { OrderHistoryList } from '@/components/student/orders/OrderHistoryList';
 import { CartDrawer } from '@/components/student/cart/CartDrawer';
+import { EmptyState } from '@/components/student/common/EmptyState';
 
 import { MenuSkeleton } from '@/components/student/skeletons/MenuSkeleton';
 import { QueueTrackerSkeleton } from '@/components/student/skeletons/QueueTrackerSkeleton';
@@ -21,7 +22,7 @@ import { OrderHistorySkeleton } from '@/components/student/skeletons/OrderHistor
 import { ApiErrorDisplay } from '@/components/student/common/ApiErrorDisplay';
 import { Button } from '@/components/ui/Button';
 
-import { ShoppingBag, Utensils, History, Sparkles } from 'lucide-react';
+import { ShoppingBag, Utensils, History, Sparkles, Clock } from 'lucide-react';
 import { analytics } from '@/services/analytics';
 
 // Lazy Load Heavy Modals
@@ -35,10 +36,12 @@ const QRPickupModal = dynamic(
   { ssr: false }
 );
 
+export type DashboardTab = 'menu' | 'queue' | 'orders';
+
 export default function StudentDashboardPage() {
   const { addItem, itemCount, setIsCartOpen } = useCart();
 
-  const [activeTab, setActiveTab] = useState<'menu' | 'orders'>('menu');
+  const [activeTab, setActiveTab] = useState<DashboardTab>('menu');
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeOrder, setActiveOrder] = useState<StudentOrder | null>(null);
@@ -135,6 +138,7 @@ export default function StudentDashboardPage() {
       estimatedWaitMinutes: newOrder.estimatedPreparationTimeMinutes,
     });
     setOrderHistory((prev) => [newOrder, ...prev]);
+    setActiveTab('queue');
   };
 
   const handleReorder = async (orderId: string) => {
@@ -170,63 +174,76 @@ export default function StudentDashboardPage() {
           </Button>
         </div>
 
-        {/* Live Queue Tracker */}
-        {featureFlags.enableQueueTracking && (
-          <div>
-            {isLoadingQueue ? (
-              <QueueTrackerSkeleton />
-            ) : (
-              activeOrder && (
-                <QueueTracker
-                  queueStatus={queueStatus}
-                  onOpenQRModal={() => setIsQRModalOpen(true)}
-                />
-              )
-            )}
-          </div>
-        )}
-
         {/* API Error Callout */}
         {apiError && <ApiErrorDisplay message={apiError} onRetry={loadDashboardData} />}
 
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-3 border-b border-slate-200 pb-2">
+        {/* Navigation Tabs Bar */}
+        <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto scrollbar-none" role="tablist" aria-label="Student Dashboard Views">
+          {/* Tab 1: Menu Explorer */}
           <button
+            role="tab"
+            aria-selected={activeTab === 'menu'}
             onClick={() => {
               setActiveTab('menu');
               analytics.trackCategoryFilter('menu-tab');
             }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 shrink-0 ${
               activeTab === 'menu'
-                ? 'bg-[#054A36] text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-[#054A36] text-white shadow-sm scale-[1.02]'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
             <Utensils className="h-4 w-4" />
-            Menu Explorer
+            <span>Menu Explorer</span>
           </button>
 
+          {/* Tab 2: Live Queue Tracker */}
+          {featureFlags.enableQueueTracking && (
+            <button
+              role="tab"
+              aria-selected={activeTab === 'queue'}
+              onClick={() => {
+                setActiveTab('queue');
+                analytics.trackCategoryFilter('queue-tab');
+              }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 shrink-0 relative ${
+                activeTab === 'queue'
+                  ? 'bg-[#054A36] text-white shadow-sm scale-[1.02]'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              <Clock className="h-4 w-4" />
+              <span>Live Queue</span>
+              {activeOrder && (
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping absolute top-2 right-2" />
+              )}
+            </button>
+          )}
+
+          {/* Tab 3: Order History */}
           {featureFlags.enableOrderHistory && (
             <button
+              role="tab"
+              aria-selected={activeTab === 'orders'}
               onClick={() => {
                 setActiveTab('orders');
                 analytics.trackCategoryFilter('orders-tab');
               }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 shrink-0 ${
                 activeTab === 'orders'
-                  ? 'bg-[#054A36] text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-100'
+                  ? 'bg-[#054A36] text-white shadow-sm scale-[1.02]'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
               <History className="h-4 w-4" />
-              Order History
+              <span>Order History</span>
             </button>
           )}
         </div>
 
-        {/* Tab 1: Menu Explorer */}
+        {/* Tab Content 1: Menu Explorer */}
         {activeTab === 'menu' && (
-          <div className="space-y-5">
+          <div className="space-y-5 transition-all duration-300 animate-in fade-in slide-in-from-top-1">
             <MenuFilters
               categories={categories}
               selectedCategory={selectedCategory}
@@ -245,9 +262,31 @@ export default function StudentDashboardPage() {
           </div>
         )}
 
-        {/* Tab 2: Order History */}
+        {/* Tab Content 2: Live Queue Tracker */}
+        {activeTab === 'queue' && featureFlags.enableQueueTracking && (
+          <div className="space-y-5 transition-all duration-300 animate-in fade-in slide-in-from-top-1">
+            {isLoadingQueue ? (
+              <QueueTrackerSkeleton />
+            ) : activeOrder ? (
+              <QueueTracker
+                queueStatus={queueStatus}
+                onOpenQRModal={() => setIsQRModalOpen(true)}
+              />
+            ) : (
+              <EmptyState
+                icon={<Clock className="h-8 w-8 text-slate-400" />}
+                title="No Active Queue Orders"
+                description="You currently have no active canteen pre-orders in preparation."
+                actionLabel="Browse Menu Explorer"
+                onAction={() => setActiveTab('menu')}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Tab Content 3: Order History */}
         {activeTab === 'orders' && featureFlags.enableOrderHistory && (
-          <div className="space-y-4">
+          <div className="space-y-4 transition-all duration-300 animate-in fade-in slide-in-from-top-1">
             <h3 className="text-base font-bold text-slate-900">Your Past Pre-Orders</h3>
             {isLoadingHistory ? (
               <OrderHistorySkeleton />
