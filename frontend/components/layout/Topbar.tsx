@@ -5,6 +5,7 @@ import { UserRole } from '@/types/auth';
 import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/hooks/useAuth';
 import { Menu, Bell, Search } from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 interface TopbarProps {
   role: UserRole;
@@ -53,6 +54,9 @@ export const Topbar: React.FC<TopbarProps> = ({ role, title, onToggleMobileSideb
           <Bell className="h-4 w-4" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-white" />
         </button>
+
+        {/* Dark/Light Theme Switch */}
+        <ThemeToggle />
 
         <div className="h-4 w-px bg-slate-200 hidden sm:block" />
 
