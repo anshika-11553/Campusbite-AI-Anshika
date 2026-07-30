@@ -6,6 +6,8 @@ import { Sidebar } from './Sidebar';
 import { PageContainer } from './PageContainer';
 import { UserRole } from '@/types/auth';
 
+import { CampusBiteChatbot } from '@/components/common/CampusBiteChatbot';
+
 interface DashboardLayoutProps {
   children: React.ReactNode;
   role: UserRole;
@@ -16,7 +18,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row relative">
       <Sidebar
         role={role}
         isMobileOpen={isMobileOpen}
@@ -33,6 +35,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role
         <main className="flex-1 p-4 md:p-6 overflow-y-auto">
           <PageContainer>{children}</PageContainer>
         </main>
+
+        {/* Floating Rule-Based Knowledge Assistant */}
+        <CampusBiteChatbot role={role} />
       </div>
     </div>
   );

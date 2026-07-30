@@ -125,7 +125,7 @@ export const OrderWorkflowProvider: React.FC<{ children: React.ReactNode }> = ({
 
           // Recycle Token if Completed or Cancelled
           if (status === 'COLLECTED' || status === 'CANCELLED') {
-            tokenGeneratorService.releaseToken(order.tokenNumber);
+            tokenGeneratorService.releaseToken();
           }
 
           targetOrder = nextOrder;
@@ -151,7 +151,7 @@ export const OrderWorkflowProvider: React.FC<{ children: React.ReactNode }> = ({
     setOrders((prev) => {
       const target = prev.find((o) => o.id === orderId);
       if (target) {
-        tokenGeneratorService.releaseToken(target.tokenNumber);
+        tokenGeneratorService.releaseToken();
         showToast(`Order #${target.orderNumber} (Token #${target.tokenNumber}) Cancelled.`, 'info');
       }
       return prev.map((o) => (o.id === orderId ? { ...o, status: 'CANCELLED' } : o));
@@ -210,7 +210,7 @@ export const OrderWorkflowProvider: React.FC<{ children: React.ReactNode }> = ({
               return o;
             }
 
-            tokenGeneratorService.releaseToken(o.tokenNumber);
+            tokenGeneratorService.releaseToken();
             result = { success: true, message: `Token #${o.tokenNumber} verified & delivered!` };
             return { ...o, status: 'COLLECTED', isDelivered: true };
           }

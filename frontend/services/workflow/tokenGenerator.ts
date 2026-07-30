@@ -11,7 +11,7 @@ class TokenGeneratorService {
     return token;
   }
 
-  releaseToken(_tokenString?: string): void {
+  releaseToken(): void {
     // Recycles tokens
   }
 
