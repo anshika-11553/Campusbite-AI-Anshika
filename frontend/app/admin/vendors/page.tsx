@@ -155,6 +155,20 @@ export default function AdminVendorsPage() {
 
               <p className="text-xs text-slate-500 font-medium">{v.vendor}</p>
 
+              {/* Vendor UPI Payment Audit (Read Only for Admin) */}
+              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 space-y-1 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">UPI Payment Settings</span>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold">
+                    QR Uploaded & Active
+                  </span>
+                </div>
+                <p className="font-mono text-[11px] text-[#054A36] dark:text-emerald-400">
+                  UPI ID: {v.id === 'v-1' ? 'maincampus.canteen@upi' : v.id === 'v-2' ? 'southexpress@okaxis' : 'northcanteen@paytm'}
+                </p>
+                <p className="text-[10px] text-slate-400">Admin Audit: Read-only access. Vendor manages personal QR credentials.</p>
+              </div>
+
               <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-3">
                 <div className="flex items-center gap-1 text-xs font-semibold text-amber-600">
                   <Star className="h-4 w-4 fill-amber-400 text-amber-400" />

@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { CartProvider } from '@/context/CartContext';
 import { OrderWorkflowProvider } from '@/context/OrderWorkflowContext';
+import { VendorProvider } from '@/context/VendorContext';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { siteConfig } from '@/config/site';
 
@@ -37,7 +38,9 @@ export default function RootLayout({
             <AuthProvider>
               <ToastProvider>
                 <CartProvider>
-                  <OrderWorkflowProvider>{children}</OrderWorkflowProvider>
+                  <VendorProvider>
+                    <OrderWorkflowProvider>{children}</OrderWorkflowProvider>
+                  </VendorProvider>
                 </CartProvider>
               </ToastProvider>
             </AuthProvider>

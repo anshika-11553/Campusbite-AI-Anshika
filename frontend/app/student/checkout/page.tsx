@@ -6,18 +6,20 @@ import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useCart } from '@/hooks/useCart';
 import { useOrderWorkflow } from '@/context/OrderWorkflowContext';
+import { useVendor } from '@/context/VendorContext';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { formatCurrency } from '@/constants/currency';
 import { StudentOrder } from '@/types/student';
 import { ReceiptModal } from '@/components/student/orders/ReceiptModal';
-import { ShoppingBag, Clock, CheckCircle2, QrCode, Download, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { ShoppingBag, Clock, CheckCircle2, QrCode, Download, ArrowRight, ShieldCheck, AlertCircle, Store } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 
 export default function StudentCheckoutPage() {
   const router = useRouter();
   const { items, totalAmountInINR, clearCart } = useCart();
   const { placeOrder } = useOrderWorkflow();
+  const { getVendorByNameOrId } = useVendor();
   const { showToast } = useToast();
 
   const [pickupSlot, setPickupSlot] = useState<string>('Instant Pickup (10-15 mins)');
@@ -27,6 +29,10 @@ export default function StudentCheckoutPage() {
   // Confirmed Order State
   const [createdOrder, setCreatedOrder] = useState<StudentOrder | null>(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState<boolean>(false);
+
+  // Determine active outlet profile
+  const selectedOutletName = items[0]?.menuItem.category ? 'Main Campus Food Court' : 'Main Campus Food Court';
+  const vendorProfile = getVendorByNameOrId(selectedOutletName);
 
   const gstAmount = Math.round(totalAmountInINR * 0.05);
   const totalWithGst = totalAmountInINR;
@@ -39,7 +45,7 @@ export default function StudentCheckoutPage() {
       const order = placeOrder({
         studentId: 'std-user-1',
         studentName: 'Anshika Sharma',
-        vendorName: 'Main Campus Food Court',
+        vendorName: vendorProfile.outletName,
         items: items.map((item) => ({
           itemId: item.menuItem.id,
           itemName: item.menuItem.name,
@@ -55,21 +61,21 @@ export default function StudentCheckoutPage() {
       clearCart();
       setCreatedOrder(order);
       setIsSubmitting(false);
-      showToast(`Payment Verified! Token #${order.tokenNumber} Generated`, 'success');
+      showToast(`Payment Verified for ${vendorProfile.outletName}! Token #${order.tokenNumber} Generated`, 'success');
     }, 400);
   };
 
   return (
-    <DashboardLayout role="student" title="Canteen UPI QR Express Checkout">
+    <DashboardLayout role="student" title="Vendor Direct UPI Express Checkout">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
               <QrCode className="h-6 w-6 text-[#054A36] dark:text-emerald-400" />
-              CampusBite Hackathon Express Checkout (Static UPI QR)
+              Direct Vendor UPI QR Payment
             </h2>
-            <p className="text-xs text-slate-500">Scan merchant QR code, complete UPI payment, and generate token</p>
+            <p className="text-xs text-slate-500">Scan outlet-specific QR code, complete payment to vendor, and generate token</p>
           </div>
         </div>
 
@@ -82,7 +88,7 @@ export default function StudentCheckoutPage() {
 
             <div className="space-y-2">
               <span className="text-xs uppercase font-extrabold text-emerald-800 dark:text-emerald-300 tracking-wider">
-                Payment Successful & Verified
+                Payment Received by {vendorProfile.outletName}
               </span>
               <h3 className="text-4xl font-black text-[#054A36] dark:text-emerald-400">
                 Token #{createdOrder.tokenNumber}
@@ -117,20 +123,26 @@ export default function StudentCheckoutPage() {
           <Card className="p-8 text-center space-y-4">
             <ShoppingBag className="h-10 w-10 text-slate-400 mx-auto" />
             <h3 className="text-lg font-bold text-slate-900 dark:text-white">Your Basket is Empty</h3>
-            <p className="text-xs text-slate-500">Add delicious food items from the menu to proceed with UPI pre-order.</p>
+            <p className="text-xs text-slate-500">Add delicious food items from the menu to proceed with vendor UPI pre-order.</p>
             <Button variant="primary" onClick={() => router.push('/student/menu')}>
               Browse 35+ Menu Catalogue
             </Button>
           </Card>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left Side: Order Summary */}
+            {/* Left Side: Order Summary & Outlet Profile */}
             <div className="lg:col-span-7 space-y-4">
               <Card className="p-5 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-4">
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
-                  <ShoppingBag className="h-4 w-4 text-[#054A36] dark:text-emerald-400" />
-                  Order Summary
-                </h3>
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    <ShoppingBag className="h-4 w-4 text-[#054A36] dark:text-emerald-400" />
+                    Order Summary
+                  </h3>
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1">
+                    <Store className="h-3.5 w-3.5 text-emerald-600" />
+                    {vendorProfile.outletName}
+                  </span>
+                </div>
 
                 <div className="space-y-2">
                   {items.map((item) => (
@@ -186,23 +198,29 @@ export default function StudentCheckoutPage() {
               </Card>
             </div>
 
-            {/* Right Side: Static UPI QR Code Display & Complete Payment Button */}
+            {/* Right Side: Vendor Specific QR Code Display & Payment Instructions */}
             <div className="lg:col-span-5 space-y-4">
               <Card className="p-6 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-center space-y-4 shadow-md">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                  <span className="text-xs font-extrabold uppercase text-[#054A36] dark:text-emerald-400 tracking-wider">
-                    Scan Canteen Merchant QR
-                  </span>
-                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                  <div className="text-left">
+                    <span className="text-[10px] font-extrabold uppercase text-[#054A36] dark:text-emerald-400 tracking-wider block">
+                      Vendor Outlet Payment QR
+                    </span>
+                    <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                      {vendorProfile.outletName}
+                    </h4>
+                  </div>
+                  <ShieldCheck className="h-5 w-5 text-emerald-600" />
                 </div>
 
-                {/* QR Code Container */}
+                {/* Vendor QR Code Container */}
                 <div className="p-3 bg-white border-2 border-dashed border-emerald-500 rounded-2xl inline-block shadow-inner mx-auto">
                   <Image
-                    src="/payment/vendor-upi.png"
-                    alt="Campus Canteen Merchant UPI QR Code"
+                    src={vendorProfile.qrCodeUrl}
+                    alt={`${vendorProfile.outletName} UPI QR Code`}
                     width={220}
                     height={220}
+                    unoptimized
                     priority
                     className="rounded-xl mx-auto object-contain"
                   />
@@ -210,10 +228,10 @@ export default function StudentCheckoutPage() {
 
                 <div className="space-y-1 text-xs">
                   <p className="font-extrabold text-slate-800 dark:text-slate-200">
-                    Scan this QR Code using any UPI App
+                    Scan Vendor QR using any UPI App
                   </p>
-                  <p className="text-[11px] text-slate-500 font-semibold">
-                    (GPay / PhonePe / Paytm / BHIM)
+                  <p className="font-mono text-[11px] text-[#054A36] dark:text-emerald-400 font-bold">
+                    UPI ID: {vendorProfile.upiId}
                   </p>
                   <p className="text-xs text-emerald-700 dark:text-emerald-400 font-bold pt-1">
                     Pay Exactly: {formatCurrency(totalWithGst)}
@@ -222,7 +240,7 @@ export default function StudentCheckoutPage() {
 
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                   <p className="text-[11px] text-slate-400 mb-3">
-                    After completing the payment, click the button below to generate your token.
+                    After completing the UPI payment to {vendorProfile.vendorName}, click below to generate your token.
                   </p>
                   <Button
                     variant="primary"
@@ -253,7 +271,7 @@ export default function StudentCheckoutPage() {
                   Confirm Payment Completion
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Have you successfully completed the UPI payment of <span className="font-bold text-[#054A36] dark:text-emerald-400">{formatCurrency(totalWithGst)}</span> to the canteen merchant QR code?
+                  Have you successfully completed the UPI payment of <span className="font-bold text-[#054A36] dark:text-emerald-400">{formatCurrency(totalWithGst)}</span> to <span className="font-bold text-slate-800 dark:text-slate-200">{vendorProfile.outletName}</span> ({vendorProfile.upiId})?
                 </p>
               </div>
 
