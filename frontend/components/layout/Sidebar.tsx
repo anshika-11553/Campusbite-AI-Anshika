@@ -305,7 +305,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Sign Out Button */}
           <button
-            onClick={() => logout()}
+            onClick={async () => {
+              await logout();
+              window.location.href = '/';
+            }}
             title={isCollapsed ? 'Sign Out' : undefined}
             className={cn(
               'relative group w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-200 hover:bg-red-500/20 hover:text-red-100 font-semibold text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-400',

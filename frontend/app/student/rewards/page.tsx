@@ -3,47 +3,65 @@
 import React from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card } from '@/components/ui/Card';
-import { Gift, Award, Sparkles, Zap } from 'lucide-react';
+import { Gift, Award, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { useToast } from '@/hooks/useToast';
 
 export default function StudentRewardsPage() {
+  const { showToast } = useToast();
+
+  const rewards = [
+    { title: 'Free Cold Coffee Voucher', points: 150, code: 'COFFEEFREE' },
+    { title: '₹50 Off Next Pre-Order', points: 200, code: 'SAVE50' },
+    { title: 'Free Dessert Cup (Brownie / Sundae)', points: 250, code: 'SWEETTREAT' },
+  ];
+
+  const handleRedeem = (code: string, pts: number) => {
+    showToast(`Voucher ${code} redeemed! ${pts} points used.`, 'success');
+  };
+
   return (
-    <DashboardLayout role="student" title="Rewards & Loyalty Points">
+    <DashboardLayout role="student" title="Campus Rewards & Loyalty Points">
       <div className="space-y-6">
-        <div className="p-6 rounded-2xl bg-gradient-to-r from-[#054A36] to-emerald-800 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
-          <div className="space-y-2 text-center md:text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/30 rounded-full text-xs font-semibold text-emerald-300 border border-emerald-400/30">
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>Campus Loyalty Tier: Gold Explorer</span>
+        <div className="p-6 bg-gradient-to-r from-amber-500 to-amber-700 text-white rounded-2xl flex items-center justify-between shadow-lg">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-white/20 rounded-2xl">
+              <Gift className="h-8 w-8" />
             </div>
-            <h2 className="text-2xl font-extrabold">120 Campus Points</h2>
-            <p className="text-xs text-emerald-100/80">Earn 10 points for every ₹100 spent at campus outlets</p>
+            <div>
+              <span className="text-xs uppercase font-bold text-amber-100">Reward Balance</span>
+              <h2 className="text-3xl font-extrabold">340 PTS</h2>
+            </div>
           </div>
-          <Button variant="secondary" size="lg" leftIcon={<Zap className="h-4 w-4" />}>
-            Redeem Points
-          </Button>
+          <span className="px-3 py-1 bg-white/20 text-white text-xs font-bold rounded-full">
+            Silver Tier Member ⭐
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            { title: 'Free Cold Coffee', points: '100 Points', desc: 'Valid at Main Canteen', icon: Gift },
-            { title: '₹50 Off Meal Voucher', points: '150 Points', desc: 'Valid across all vendors', icon: Award },
-            { title: 'Express Queue Pass', points: '200 Points', desc: 'Skip peak hour waiting line', icon: Zap },
-          ].map((reward, i) => (
-            <Card key={i} className="p-5 border-slate-200 space-y-4">
-              <div className="p-3 bg-amber-50 rounded-xl text-amber-700 w-fit">
-                <reward.icon className="h-6 w-6" />
-              </div>
-              <div>
-                <h3 className="font-bold text-base text-slate-900">{reward.title}</h3>
-                <p className="text-xs text-slate-500 mt-1">{reward.desc}</p>
-              </div>
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                <span className="font-extrabold text-sm text-[#054A36]">{reward.points}</span>
-                <Button variant="outline" size="sm">Claim</Button>
-              </div>
-            </Card>
-          ))}
+        <div className="space-y-3">
+          <h3 className="text-base font-bold text-slate-900">Available Reward Redemptions</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {rewards.map((r, idx) => (
+              <Card key={idx} className="p-5 border-amber-200 bg-white space-y-4">
+                <div className="p-2.5 bg-amber-50 rounded-xl w-fit text-amber-700">
+                  <Award className="h-6 w-6" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-slate-900">{r.title}</h4>
+                  <span className="text-xs font-extrabold text-amber-600">{r.points} PTS Required</span>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => handleRedeem(r.code, r.points)}
+                  className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+                  leftIcon={<CheckCircle2 className="h-4 w-4" />}
+                >
+                  Redeem Voucher
+                </Button>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
     </DashboardLayout>

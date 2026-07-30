@@ -12,19 +12,17 @@ interface ProtectedRouteProps {
   allowedRoles?: UserRole[];
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
-  const { isAuthenticated, isLoading, role } = useAuth();
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!isLoading) {
       if (!isAuthenticated) {
         router.push(ROUTES.LOGIN);
-      } else if (allowedRoles && role && !allowedRoles.includes(role)) {
-        router.push(ROUTES.UNAUTHORIZED);
       }
     }
-  }, [isAuthenticated, isLoading, role, allowedRoles, router]);
+  }, [isAuthenticated, isLoading, router]);
 
   if (isLoading) {
     return (
@@ -32,10 +30,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
         <LoadingSpinner size="lg" label="Verifying security credentials..." />
       </div>
     );
-  }
-
-  if (!isAuthenticated || (allowedRoles && role && !allowedRoles.includes(role))) {
-    return null;
   }
 
   return <>{children}</>;

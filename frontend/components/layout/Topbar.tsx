@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/hooks/useAuth';
 import { Menu, Bell, Search } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { NotificationCenter } from '@/components/common/NotificationCenter';
 
 interface TopbarProps {
   role: UserRole;
@@ -15,6 +16,7 @@ interface TopbarProps {
 
 export const Topbar: React.FC<TopbarProps> = ({ role, title, onToggleMobileSidebar }) => {
   const { user } = useAuth();
+  const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
 
   const roleLabelMap: Record<UserRole, string> = {
     student: 'Student',
@@ -50,10 +52,21 @@ export const Topbar: React.FC<TopbarProps> = ({ role, title, onToggleMobileSideb
         </div>
 
         {/* Notifications Icon */}
-        <button className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors relative">
-          <Bell className="h-4 w-4" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-white" />
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors relative"
+            aria-label="Open notifications"
+          >
+            <Bell className="h-4 w-4" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-white" />
+          </button>
+
+          <NotificationCenter
+            isOpen={isNotificationsOpen}
+            onClose={() => setIsNotificationsOpen(false)}
+          />
+        </div>
 
         {/* Dark/Light Theme Switch */}
         <ThemeToggle />
