@@ -99,7 +99,7 @@ export const updateOrderStatusController = async (req, res) => {
       });
     }
 
-    const result = await updateOrderStatusService(id, status);
+    const result = await updateOrderStatusService(id, status, req.user?.role_id);
 
     return res.status(200).json({
       success: true,

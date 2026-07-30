@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth.routes.js";
 import menuRoutes from "./routes/menu.routes.js";
 import orderRoutes from "./routes/order.routes.js";
 import vendorRoutes from "./routes/vendor.routes.js";
+import paymentRoutes from "./routes/payment.routes.js";
 
 const app = express();
 
@@ -59,6 +60,12 @@ app.use("/api/orders", orderRoutes);
 // Vendor Routes
 // ==========================
 app.use("/api/vendor", vendorRoutes);
+
+// ==========================
+// Payment Routes
+// ==========================
+app.use("/api/payment", paymentRoutes);
+
 
 
 // ==========================

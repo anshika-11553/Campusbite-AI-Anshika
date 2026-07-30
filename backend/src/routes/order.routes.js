@@ -47,7 +47,7 @@ router.get(
 router.patch(
   "/:id/status",
   authenticateUser,
-  authorizeRoles(ROLES.VENDOR, ROLES.ADMIN),
+  authorizeRoles(ROLES.VENDOR, ROLES.CHIEF, ROLES.ADMIN),
   updateOrderStatusController
 );
 

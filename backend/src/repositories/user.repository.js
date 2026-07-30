@@ -1,4 +1,5 @@
 import supabase from "../config/supabase.js";
+import { ROLES } from "../constants/roles.js";
 
 // ==========================
 // Create User
@@ -25,7 +26,7 @@ export const createCampusUser = async ({
 }) => {
   return await createUser({
     auth_user_id,
-    role_id: process.env.STUDENT_ROLE_ID,
+    role_id: process.env.STUDENT_ROLE_ID || ROLES.STUDENT,
     full_name,
     email,
   });
@@ -70,4 +71,3 @@ export const getUserByAuthId = async (authUserId) => {
 
   return data;
 };
-

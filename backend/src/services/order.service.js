@@ -9,7 +9,11 @@ import {
   getActiveVendorOrders,
   updateOrderStatus,
   getVendorDashboardData,
+  getPopularMenuItemsData,
+  getVendorQueueData,
+  getVendorAnalyticsData,
 } from "../repositories/order.repository.js";
+import { ROLES } from "../constants/roles.js";
 
 // ==========================
 // Validate Order Items
@@ -95,14 +99,20 @@ const generateDailyToken = async () => {
 // ==========================
 // Estimate Waiting Time
 // ==========================
-const estimateWaitTime = (items) => {
+const estimateWaitTime = async (items) => {
   let totalPrepTime = 0;
 
   items.forEach((item) => {
-    totalPrepTime += item.prep_time * item.quantity;
+    totalPrepTime += (item.prep_time || 5) * item.quantity;
   });
 
-  return Math.max(15, totalPrepTime);
+  try {
+    const activeOrders = await getVendorQueueData();
+    const queueBuffer = (activeOrders || []).length * 2;
+    return Math.max(15, totalPrepTime + queueBuffer);
+  } catch (error) {
+    return Math.max(15, totalPrepTime);
+  }
 };
 
 // ==========================
@@ -174,7 +184,7 @@ totalAmount = Number((totalAmount + subtotal).toFixed(2));
   // ==========================
   // Estimate Waiting Time
   // ==========================
-  const estimatedWaitMinutes = estimateWaitTime(orderItems);
+  const estimatedWaitMinutes = await estimateWaitTime(orderItems);
 
   // ==========================
   // Create Order
@@ -323,7 +333,11 @@ export const getVendorOrders = async () => {
 // ==========================
 // Update Order Status Service
 // ==========================
-export const updateOrderStatusService = async (orderId, newStatus) => {
+export const updateOrderStatusService = async (
+  orderId,
+  newStatus,
+  userRoleId = null
+) => {
   const VALID_STATUSES = [
     "PENDING_PAYMENT",
     "PAID",
@@ -343,6 +357,12 @@ export const updateOrderStatusService = async (orderId, newStatus) => {
       `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}`
     );
     error.statusCode = 400;
+    throw error;
+  }
+
+  if (userRoleId === ROLES.CHIEF && newStatus === "CANCELLED") {
+    const error = new Error("Chef is not authorized to cancel orders");
+    error.statusCode = 403;
     throw error;
   }
 
@@ -376,6 +396,7 @@ export const updateOrderStatusService = async (orderId, newStatus) => {
 
   const updatedOrder = await updateOrderStatus(orderId, newStatus);
 
+
   return {
     order_id: updatedOrder.id,
     old_status: order.status,
@@ -390,6 +411,52 @@ export const updateOrderStatusService = async (orderId, newStatus) => {
 export const getVendorDashboard = async () => {
   return await getVendorDashboardData();
 };
+
+// ==========================
+// Get Popular Items Service
+// ==========================
+export const getPopularItems = async () => {
+  return await getPopularMenuItemsData();
+};
+
+// ==========================
+// Get Vendor Queue Service
+// ==========================
+export const getVendorQueue = async () => {
+  const orders = await getVendorQueueData();
+
+  // Sort by token_number ASC
+  orders.sort((a, b) => {
+    const tokenA = a.daily_tokens?.token_number ?? Infinity;
+    const tokenB = b.daily_tokens?.token_number ?? Infinity;
+
+    if (tokenA !== tokenB) {
+      return tokenA - tokenB;
+    }
+
+    return new Date(a.created_at) - new Date(b.created_at);
+  });
+
+  return orders.map((order) => ({
+    order_id: order.id,
+    token_number: order.daily_tokens ? order.daily_tokens.token_number : null,
+    status: order.status,
+    estimated_wait_minutes: order.estimated_wait_minutes,
+    created_at: order.created_at,
+    customer_name: order.users?.full_name || "Unknown Customer",
+    total_amount: Number(order.total_amount),
+  }));
+};
+
+// ==========================
+// Get Vendor Analytics Service
+// ==========================
+export const getVendorAnalytics = async () => {
+  return await getVendorAnalyticsData();
+};
+
+
+
 
 
 
