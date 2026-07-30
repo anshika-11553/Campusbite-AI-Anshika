@@ -169,7 +169,9 @@ class StudentApiService implements IStudentApiService {
         data: {
           id: 'ord-101',
           orderNumber: 'CB-8492',
+          tokenNumber: '27',
           studentId: 'std-user-1',
+          studentName: 'Anshika Sharma',
           vendorName: 'Main Campus Food Court',
           items: [
             { itemId: 'item-1', itemName: 'Paneer Butter Masala Combo', quantity: 1, priceInINR: 140 },
@@ -179,10 +181,11 @@ class StudentApiService implements IStudentApiService {
           status: 'PREPARING',
           pickupSlot: 'Instant Pickup (10-15 mins)',
           paymentMethod: 'UPI',
-          qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=CB-8492-std-user-1',
+          qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TOKEN-27-CB-8492',
           estimatedPreparationTimeMinutes: 8,
           createdAt: new Date().toISOString(),
           queuePosition: 3,
+          pickupCounter: 'Counter A',
         },
       };
     }
@@ -199,11 +202,13 @@ class StudentApiService implements IStudentApiService {
         data: {
           orderId,
           orderNumber: 'CB-8492',
-          currentStep: 3,
-          totalSteps: 4,
+          tokenNumber: '27',
+          currentStep: 4,
+          totalSteps: 6,
           statusText: 'Kitchen is preparing your meal',
           estimatedWaitMinutes: 8,
           queuePosition: 3,
+          pickupCounter: 'Counter A',
         },
       };
     }
@@ -219,7 +224,9 @@ class StudentApiService implements IStudentApiService {
       const newOrder: StudentOrder = {
         id: `ord-${Date.now()}`,
         orderNumber: `CB-${Math.floor(1000 + Math.random() * 9000)}`,
+        tokenNumber: '28',
         studentId: 'std-user-1',
+        studentName: 'Anshika Sharma',
         vendorName: 'Main Campus Food Court',
         items: payload.items.map((i) => ({
           itemId: i.menuItem.id,
@@ -229,13 +236,14 @@ class StudentApiService implements IStudentApiService {
           customization: i.customization,
         })),
         totalAmountInINR: totalInINR,
-        status: 'CONFIRMED',
+        status: 'PENDING',
         pickupSlot: payload.pickupSlot,
         paymentMethod: payload.paymentMethod,
         qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=CB-NEW-${Date.now()}`,
         estimatedPreparationTimeMinutes: 12,
         createdAt: new Date().toISOString(),
         queuePosition: 4,
+        pickupCounter: 'Counter A',
       };
 
       return {
@@ -258,14 +266,16 @@ class StudentApiService implements IStudentApiService {
           {
             id: 'ord-99',
             orderNumber: 'CB-7321',
+            tokenNumber: '15',
             studentId: 'std-user-1',
+            studentName: 'Anshika Sharma',
             vendorName: 'Main Campus Food Court',
             items: [
               { itemId: 'item-2', itemName: 'Classic Veg Cheese Grill Sandwich', quantity: 2, priceInINR: 70 },
               { itemId: 'item-3', itemName: 'Cold Coffee with Ice Cream', quantity: 1, priceInINR: 60 },
             ],
             totalAmountInINR: 200,
-            status: 'COMPLETED',
+            status: 'COLLECTED',
             pickupSlot: 'Yesterday, 01:15 PM',
             paymentMethod: 'CANTEEN_CARD',
             estimatedPreparationTimeMinutes: 0,
@@ -275,11 +285,13 @@ class StudentApiService implements IStudentApiService {
           {
             id: 'ord-98',
             orderNumber: 'CB-6102',
+            tokenNumber: '63',
             studentId: 'std-user-1',
+            studentName: 'Anshika Sharma',
             vendorName: 'Nescafe Kiosk',
             items: [{ itemId: 'item-6', itemName: 'Chocolate Brownie Sundae', quantity: 1, priceInINR: 85 }],
             totalAmountInINR: 85,
-            status: 'COMPLETED',
+            status: 'COLLECTED',
             pickupSlot: '2 days ago',
             paymentMethod: 'UPI',
             estimatedPreparationTimeMinutes: 0,
@@ -306,6 +318,7 @@ class StudentApiService implements IStudentApiService {
           ...target,
           id: `ord-${Date.now()}`,
           orderNumber: `CB-${Math.floor(1000 + Math.random() * 9000)}`,
+          tokenNumber: '29',
           status: 'PENDING',
           createdAt: new Date().toISOString(),
         },
@@ -385,7 +398,7 @@ class StudentApiService implements IStudentApiService {
         data: [
           {
             id: 'notif-1',
-            title: 'Order CB-8492 Update',
+            title: 'Token #27 Update',
             message: 'Kitchen is currently preparing your Paneer Butter Masala Combo.',
             timestamp: '5 mins ago',
             type: 'order',

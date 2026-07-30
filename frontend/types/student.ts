@@ -21,7 +21,7 @@ export interface CartItem {
   customization?: string;
 }
 
-export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
+export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'SENT_TO_KITCHEN' | 'PREPARING' | 'READY' | 'COLLECTED' | 'CANCELLED';
 
 export interface StudentOrderItem {
   itemId: string;
@@ -34,7 +34,9 @@ export interface StudentOrderItem {
 export interface StudentOrder {
   id: string;
   orderNumber: string;
+  tokenNumber: string; // Padded two-digit token (e.g. "07", "27")
   studentId: string;
+  studentName?: string;
   vendorName: string;
   items: StudentOrderItem[];
   totalAmountInINR: number;
@@ -45,17 +47,25 @@ export interface StudentOrder {
   estimatedPreparationTimeMinutes: number;
   createdAt: string;
   queuePosition?: number;
+  pickupCounter?: string;
+  kitchenPriority?: 'HIGH' | 'MEDIUM' | 'NORMAL';
+  specialInstructions?: string;
+  acceptedBy?: string;
+  preparedBy?: string;
+  isPaused?: boolean;
   rating?: number;
 }
 
 export interface QueueStatus {
   orderId: string;
   orderNumber: string;
-  currentStep: number; // 1: Pending, 2: Confirmed, 3: Preparing, 4: Ready
+  tokenNumber?: string;
+  currentStep: number; // 1: Pending, 2: Accepted, 3: Sent to Kitchen, 4: Preparing, 5: Ready, 6: Collected
   totalSteps: number;
   statusText: string;
   estimatedWaitMinutes: number;
   queuePosition?: number;
+  pickupCounter?: string;
 }
 
 export interface PickupSlot {

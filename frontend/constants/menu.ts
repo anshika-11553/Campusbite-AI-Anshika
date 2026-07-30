@@ -24,9 +24,10 @@ export const PAYMENT_METHODS: { id: PaymentMethod; label: string; description: s
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, { label: string; variant: 'amber' | 'emerald' | 'slate' | 'red' }> = {
   PENDING: { label: 'Order Placed', variant: 'amber' },
-  CONFIRMED: { label: 'Confirmed by Canteen', variant: 'amber' },
+  ACCEPTED: { label: 'Accepted by Vendor', variant: 'amber' },
+  SENT_TO_KITCHEN: { label: 'Sent to Kitchen', variant: 'amber' },
   PREPARING: { label: 'Kitchen Preparing', variant: 'amber' },
   READY: { label: 'Ready for Pickup', variant: 'emerald' },
-  COMPLETED: { label: 'Order Collected', variant: 'slate' },
+  COLLECTED: { label: 'Order Collected', variant: 'slate' },
   CANCELLED: { label: 'Cancelled', variant: 'red' },
 };

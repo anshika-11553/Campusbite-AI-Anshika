@@ -8,9 +8,9 @@ import { Alert } from '@/components/ui/Alert';
 import { formatCurrency } from '@/constants/currency';
 import { PAYMENT_METHODS } from '@/constants/menu';
 import { PaymentMethod, StudentOrder } from '@/types/student';
-import { studentApiService } from '@/services/api/v1/student';
 import { useToast } from '@/hooks/useToast';
 import { analytics } from '@/services/analytics';
+import { useOrderWorkflow } from '@/context/OrderWorkflowContext';
 import { X, CreditCard, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { sanitizeInput } from '@/utils/sanitizer';
 
@@ -29,6 +29,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 }) => {
   const { items, totalAmountInINR, clearCart, setIsCartOpen } = useCart();
   const { showToast } = useToast();
+  const { placeOrder } = useOrderWorkflow();
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('UPI');
   const [specialInstructions, setSpecialInstructions] = useState<string>('');
@@ -78,23 +79,31 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setIsSubmitting(true);
     try {
       const sanitizedInstructions = sanitizeInput(specialInstructions);
-      const res = await studentApiService.placeOrder({
-        items,
+
+      const createdOrder = placeOrder({
+        studentId: 'std-user-1',
+        studentName: 'Anshika Sharma',
+        vendorName: 'Main Campus Food Court',
+        items: items.map((i) => ({
+          itemId: i.menuItem.id,
+          itemName: i.menuItem.name,
+          quantity: i.quantity,
+          priceInINR: i.menuItem.priceInINR,
+          customization: i.customization,
+        })),
+        totalAmountInINR,
         pickupSlot: selectedSlot,
         paymentMethod,
         specialInstructions: sanitizedInstructions,
+        estimatedPreparationTimeMinutes: 12,
       });
 
-      if (res.success) {
-        showToast('Pre-order confirmed successfully!', 'success', 'Order Placed');
-        analytics.trackOrderPlaced(res.data.id, res.data.totalAmountInINR);
-        clearCart();
-        setIsCartOpen(false);
-        onClose();
-        onOrderSuccess(res.data);
-      } else {
-        throw new Error(res.message || 'Failed to place order.');
-      }
+      showToast(`Pre-order confirmed! Token #${createdOrder.tokenNumber}`, 'success', 'Order Placed');
+      analytics.trackOrderPlaced(createdOrder.id, createdOrder.totalAmountInINR);
+      clearCart();
+      setIsCartOpen(false);
+      onClose();
+      onOrderSuccess(createdOrder);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Checkout failed due to network error.';
       setValidationError(msg);

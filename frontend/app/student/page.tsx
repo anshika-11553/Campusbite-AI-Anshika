@@ -7,8 +7,6 @@ import { studentApiService } from '@/services/api/v1/student';
 import {
   MenuItem,
   Category,
-  StudentOrder,
-  QueueStatus,
   StudentStats,
   CanteenNotification,
   StudentAnalytics,
@@ -16,6 +14,7 @@ import {
 import { useCart } from '@/hooks/useCart';
 import { useDebounce } from '@/hooks/useDebounce';
 import { featureFlags } from '@/config/features';
+import { useOrderWorkflow } from '@/context/OrderWorkflowContext';
 
 import { WelcomeHeader } from '@/components/student/common/WelcomeHeader';
 import { StatsOverview } from '@/components/student/common/StatsOverview';
@@ -25,13 +24,12 @@ import { AnalyticsWidget } from '@/components/student/common/AnalyticsWidget';
 
 import { MenuFilters } from '@/components/student/menu/MenuFilters';
 import { MenuGrid } from '@/components/student/menu/MenuGrid';
-import { QueueTracker } from '@/components/student/tracker/QueueTracker';
+import { TokenCard } from '@/components/student/tracker/TokenCard';
 import { OrderHistoryList } from '@/components/student/orders/OrderHistoryList';
 import { CartDrawer } from '@/components/student/cart/CartDrawer';
 import { EmptyState } from '@/components/student/common/EmptyState';
 
 import { MenuSkeleton } from '@/components/student/skeletons/MenuSkeleton';
-import { QueueTrackerSkeleton } from '@/components/student/skeletons/QueueTrackerSkeleton';
 import { OrderHistorySkeleton } from '@/components/student/skeletons/OrderHistorySkeleton';
 import { ApiErrorDisplay } from '@/components/student/common/ApiErrorDisplay';
 import { useToast } from '@/hooks/useToast';
@@ -55,19 +53,16 @@ export type DashboardTab = 'menu' | 'queue' | 'orders' | 'analytics';
 export default function StudentDashboardPage() {
   const { addItem, itemCount, setIsCartOpen } = useCart();
   const { showToast } = useToast();
+  const { orders, placeOrder, updateOrderStatus, getActiveStudentOrder } = useOrderWorkflow();
 
   const [activeTab, setActiveTab] = useState<DashboardTab>('menu');
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [activeOrder, setActiveOrder] = useState<StudentOrder | null>(null);
-  const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
-  const [orderHistory, setOrderHistory] = useState<StudentOrder[]>([]);
   const [stats, setStats] = useState<StudentStats | null>(null);
   const [notifications, setNotifications] = useState<CanteenNotification[]>([]);
   const [analyticsData, setAnalyticsData] = useState<StudentAnalytics | null>(null);
 
   const [isLoadingMenu, setIsLoadingMenu] = useState<boolean>(true);
-  const [isLoadingQueue, setIsLoadingQueue] = useState<boolean>(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(true);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -79,47 +74,37 @@ export default function StudentDashboardPage() {
 
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-  // Drawer / Modal State
+  // Modal State
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
   const [checkoutSlot, setCheckoutSlot] = useState<string>('Instant Pickup (10-15 mins)');
   const [isQRModalOpen, setIsQRModalOpen] = useState<boolean>(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
 
+  const activeOrder = getActiveStudentOrder();
+
   const loadDashboardData = useCallback(async () => {
     setIsLoadingMenu(true);
-    setIsLoadingQueue(true);
     setIsLoadingHistory(true);
     setApiError(null);
 
     try {
-      const [menuRes, catRes, activeRes, historyRes, statsRes, notifRes, analyticsRes] =
-        await Promise.all([
-          studentApiService.getMenu(),
-          studentApiService.getCategories(),
-          studentApiService.getActiveOrder(),
-          studentApiService.getOrderHistory(),
-          studentApiService.getStudentStats(),
-          studentApiService.getNotifications(),
-          studentApiService.getStudentAnalytics(),
-        ]);
+      const [menuRes, catRes, statsRes, notifRes, analyticsRes] = await Promise.all([
+        studentApiService.getMenu(),
+        studentApiService.getCategories(),
+        studentApiService.getStudentStats(),
+        studentApiService.getNotifications(),
+        studentApiService.getStudentAnalytics(),
+      ]);
 
       if (menuRes.success) setMenuItems(menuRes.data);
       if (catRes.success) setCategories(catRes.data);
       if (statsRes.success) setStats(statsRes.data);
       if (notifRes.success) setNotifications(notifRes.data);
       if (analyticsRes.success) setAnalyticsData(analyticsRes.data);
-
-      if (activeRes.success && activeRes.data) {
-        setActiveOrder(activeRes.data);
-        const queueRes = await studentApiService.getQueueStatus(activeRes.data.id);
-        if (queueRes.success) setQueueStatus(queueRes.data);
-      }
-      if (historyRes.success) setOrderHistory(historyRes.data);
     } catch {
       setApiError('Failed to synchronize canteen data. Please check network.');
     } finally {
       setIsLoadingMenu(false);
-      setIsLoadingQueue(false);
       setIsLoadingHistory(false);
     }
   }, []);
@@ -178,25 +163,24 @@ export default function StudentDashboardPage() {
     setIsCheckoutOpen(true);
   };
 
-  const handleOrderSuccess = (newOrder: StudentOrder) => {
-    setActiveOrder(newOrder);
-    setQueueStatus({
-      orderId: newOrder.id,
-      orderNumber: newOrder.orderNumber,
-      currentStep: 1,
-      totalSteps: 4,
-      statusText: 'Order Placed & Awaiting Confirmation',
-      estimatedWaitMinutes: newOrder.estimatedPreparationTimeMinutes,
-      queuePosition: 4,
-    });
-    setOrderHistory((prev) => [newOrder, ...prev]);
+  const handleOrderSuccess = () => {
     setActiveTab('queue');
   };
 
   const handleReorder = async (orderId: string) => {
-    const res = await studentApiService.reorder(orderId);
-    if (res.success) {
-      handleOrderSuccess(res.data);
+    const target = orders.find((o) => o.id === orderId);
+    if (target) {
+      placeOrder({
+        studentId: target.studentId,
+        studentName: target.studentName || 'Student',
+        vendorName: target.vendorName,
+        items: target.items,
+        totalAmountInINR: target.totalAmountInINR,
+        pickupSlot: target.pickupSlot,
+        paymentMethod: target.paymentMethod,
+        estimatedPreparationTimeMinutes: 10,
+      });
+      setActiveTab('queue');
     }
   };
 
@@ -251,7 +235,7 @@ export default function StudentDashboardPage() {
             <span>Menu Explorer</span>
           </button>
 
-          {/* Tab 2: Live Queue */}
+          {/* Tab 2: Live Token Queue */}
           {featureFlags.enableQueueTracking && (
             <button
               role="tab"
@@ -267,9 +251,9 @@ export default function StudentDashboardPage() {
               }`}
             >
               <Clock className="h-4 w-4" />
-              <span>Live Queue</span>
+              <span>Live Token Tracker</span>
               {activeOrder && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping absolute top-2 right-2" />
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping absolute top-2 right-2" />
               )}
             </button>
           )}
@@ -340,20 +324,19 @@ export default function StudentDashboardPage() {
           </div>
         )}
 
-        {/* Tab 2: Live Queue Tracker */}
+        {/* Tab 2: Live Token Queue Tracker */}
         {activeTab === 'queue' && featureFlags.enableQueueTracking && (
           <div className="space-y-5 transition-all duration-300 animate-in fade-in slide-in-from-top-1">
-            {isLoadingQueue ? (
-              <QueueTrackerSkeleton />
-            ) : activeOrder ? (
-              <QueueTracker
-                queueStatus={queueStatus}
+            {activeOrder ? (
+              <TokenCard
+                order={activeOrder}
                 onOpenQRModal={() => setIsQRModalOpen(true)}
+                onConfirmCollection={(id) => updateOrderStatus(id, 'COLLECTED')}
               />
             ) : (
               <EmptyState
                 icon={<Clock className="h-8 w-8 text-slate-400" />}
-                title="No Active Queue Orders"
+                title="No Active Queue Tokens"
                 description="You currently have no active canteen pre-orders in preparation."
                 actionLabel="Browse Menu Explorer"
                 onAction={() => setActiveTab('menu')}
@@ -369,7 +352,7 @@ export default function StudentDashboardPage() {
             {isLoadingHistory ? (
               <OrderHistorySkeleton />
             ) : (
-              <OrderHistoryList orders={orderHistory} onReorder={handleReorder} />
+              <OrderHistoryList orders={orders} onReorder={handleReorder} />
             )}
           </div>
         )}
