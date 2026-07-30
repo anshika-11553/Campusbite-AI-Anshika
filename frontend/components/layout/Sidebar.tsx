@@ -200,7 +200,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                 return (
                   <Link
-                    key={item.href}
+                    key={`${item.href}-${item.label}`}
                     href={item.href}
                     onClick={onCloseMobile}
                     title={isCollapsed ? item.label : undefined}
@@ -254,7 +254,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                 return (
                   <Link
-                    key={item.href}
+                    key={`${item.href}-${item.label}`}
                     href={item.href}
                     onClick={onCloseMobile}
                     title={isCollapsed ? item.label : undefined}
