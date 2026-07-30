@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { MenuItem } from '@/types/student';
@@ -12,33 +14,32 @@ interface MenuItemCardProps {
   onToggleFavorite?: (itemId: string) => void;
 }
 
+const DEFAULT_FALLBACK_IMAGE = '/images/food/paneer_masala.jpg';
+
 export const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({ item, onAddToCart, onToggleFavorite }) => {
   const [quantity, setQuantity] = useState<number>(1);
+  const [imgSrc, setImgSrc] = useState<string>(item.imageUrl || DEFAULT_FALLBACK_IMAGE);
 
   return (
     <Card className="p-0 flex flex-col justify-between hover:shadow-xl transition-all duration-300 group border-slate-200/80 hover:-translate-y-1 bg-white relative overflow-hidden rounded-2xl">
-      {/* Image Banner */}
-      <div className="relative w-full h-44 overflow-hidden bg-slate-100">
-        {item.imageUrl ? (
-          <Image
-            src={item.imageUrl}
-            alt={item.name}
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover group-hover:scale-105 transition-transform duration-500"
-            unoptimized
-          />
-        ) : (
-          <div className="w-full h-full bg-emerald-950/10 flex items-center justify-center text-slate-400 text-xs font-bold">
-            CampusBite Meal
-          </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent pointer-events-none" />
+      {/* Image Banner Container */}
+      <div className="relative w-full h-48 overflow-hidden bg-slate-100">
+        <Image
+          src={imgSrc}
+          alt={item.name}
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          className="object-cover group-hover:scale-108 transition-transform duration-500 ease-out"
+          onError={() => setImgSrc(DEFAULT_FALLBACK_IMAGE)}
+          loading="lazy"
+          unoptimized
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-slate-900/10 to-transparent pointer-events-none" />
 
         {/* Badges Overlay */}
-        <div className="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap">
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 flex-wrap z-10">
           <span
-            className={`p-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1 backdrop-blur-md shadow-sm ${
+            className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1 backdrop-blur-md shadow-md ${
               item.isVegetarian
                 ? 'bg-emerald-600/90 text-white'
                 : 'bg-red-600/90 text-white'
@@ -48,14 +49,14 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({ item, onA
           </span>
 
           {item.isPopular && (
-            <span className="flex items-center gap-0.5 text-[10px] font-extrabold text-slate-900 bg-amber-400/90 backdrop-blur-md px-1.5 py-0.5 rounded-md shadow-sm">
-              <Flame className="h-3 w-3 fill-slate-900 text-slate-900" />
+            <span className="flex items-center gap-0.5 text-[10px] font-extrabold text-slate-950 bg-amber-400/90 backdrop-blur-md px-2 py-0.5 rounded-md shadow-md">
+              <Flame className="h-3 w-3 fill-slate-950 text-slate-950" />
               Popular
             </span>
           )}
 
           {item.isNew && (
-            <span className="flex items-center gap-0.5 text-[10px] font-extrabold text-white bg-blue-600/90 backdrop-blur-md px-1.5 py-0.5 rounded-md shadow-sm">
+            <span className="flex items-center gap-0.5 text-[10px] font-extrabold text-white bg-blue-600/90 backdrop-blur-md px-2 py-0.5 rounded-md shadow-md">
               <Sparkles className="h-3 w-3" />
               New
             </span>
@@ -66,7 +67,7 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({ item, onA
         <button
           type="button"
           onClick={() => onToggleFavorite && onToggleFavorite(item.id)}
-          className="absolute top-3 right-3 p-2 bg-white/80 hover:bg-white backdrop-blur-md text-slate-400 hover:text-red-500 rounded-full transition-all shadow-md focus:outline-none"
+          className="absolute top-3 right-3 p-2 bg-white/85 hover:bg-white backdrop-blur-md text-slate-400 hover:text-red-500 rounded-full transition-all shadow-md focus:outline-none z-10"
           aria-label="Toggle favorite"
         >
           <Heart className={`h-4 w-4 ${item.isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
@@ -81,7 +82,7 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({ item, onA
               {item.name}
             </h3>
             {item.rating && (
-              <span className="flex items-center gap-0.5 text-xs font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-200 shrink-0">
+              <span className="flex items-center gap-0.5 text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 shrink-0">
                 <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                 {item.rating}
               </span>
@@ -91,10 +92,10 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({ item, onA
 
           {/* Nutritional & Time Details */}
           <div className="flex items-center gap-2 text-[10px] text-slate-400 font-semibold pt-1">
-            <span className="bg-slate-100 px-2 py-0.5 rounded-full text-slate-600">
+            <span className="bg-slate-100 px-2 py-0.5 rounded-full text-slate-600 font-medium">
               {item.calories || '250 kcal'}
             </span>
-            <span className="bg-slate-100 px-2 py-0.5 rounded-full text-slate-600">
+            <span className="bg-slate-100 px-2 py-0.5 rounded-full text-slate-600 font-medium">
               {item.protein || '8g protein'}
             </span>
           </div>
@@ -138,7 +139,7 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({ item, onA
               onClick={() => onAddToCart(item, quantity)}
               leftIcon={<Plus className="h-4 w-4" />}
               disabled={!item.isAvailable}
-              className="rounded-xl px-3 bg-[#054A36] hover:bg-emerald-800 font-extrabold"
+              className="rounded-xl px-3 bg-[#054A36] hover:bg-emerald-800 font-extrabold shadow-sm"
             >
               {item.isAvailable ? 'Add' : 'Out of Stock'}
             </Button>
