@@ -9,6 +9,8 @@ import { EmptyState } from '../common/EmptyState';
 import { History, RotateCcw, Calendar, Store, Download, Star } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 
+import { ReceiptModal } from './ReceiptModal';
+
 interface OrderHistoryListProps {
   orders: StudentOrder[];
   onReorder: (orderId: string) => void;
@@ -17,15 +19,12 @@ interface OrderHistoryListProps {
 export const OrderHistoryList: React.FC<OrderHistoryListProps> = ({ orders, onReorder }) => {
   const { showToast } = useToast();
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [selectedReceiptOrder, setSelectedReceiptOrder] = useState<StudentOrder | null>(null);
 
   const filteredOrders = orders.filter((order) => {
     if (filterStatus === 'ALL') return true;
     return order.status === filterStatus;
   });
-
-  const handleDownloadReceipt = (orderNumber: string) => {
-    showToast(`Receipt for #${orderNumber} downloaded!`, 'success');
-  };
 
   const handleRateOrder = (orderNumber: string, rating: number) => {
     showToast(`Rated ${rating} ★ for #${orderNumber}. Thank you!`, 'success');
@@ -140,7 +139,7 @@ export const OrderHistoryList: React.FC<OrderHistoryListProps> = ({ orders, onRe
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDownloadReceipt(order.orderNumber)}
+                    onClick={() => setSelectedReceiptOrder(order)}
                     leftIcon={<Download className="h-3.5 w-3.5 text-slate-500" />}
                     className="text-xs text-slate-600"
                   >
@@ -161,6 +160,14 @@ export const OrderHistoryList: React.FC<OrderHistoryListProps> = ({ orders, onRe
             </Card>
           );
         })
+      )}
+
+      {selectedReceiptOrder && (
+        <ReceiptModal
+          order={selectedReceiptOrder}
+          isOpen={!!selectedReceiptOrder}
+          onClose={() => setSelectedReceiptOrder(null)}
+        />
       )}
     </div>
   );

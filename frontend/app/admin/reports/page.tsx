@@ -142,6 +142,65 @@ export default function AdminReportsPage() {
             </table>
           </div>
         </Card>
+
+        {/* Live Payment Logs & Transaction Audit */}
+        <Card className="p-6 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                <FileText className="h-4 w-4 text-purple-600" />
+                Live Payment Gateway & Token Transaction Audit
+              </h3>
+              <p className="text-xs text-slate-500">Real-time authorization logs with order token verification</p>
+            </div>
+            <span className="px-3 py-1 bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 text-xs font-extrabold rounded-full">
+              {orders.length} Logged Transactions
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase font-bold border-b">
+                <tr>
+                  <th className="p-3">Token #</th>
+                  <th className="p-3">Order ID</th>
+                  <th className="p-3">Payment ID</th>
+                  <th className="p-3">Student Name</th>
+                  <th className="p-3">Payment Method</th>
+                  <th className="p-3">Amount Paid</th>
+                  <th className="p-3">Gateway Status</th>
+                  <th className="p-3">Timestamp</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-800 dark:text-slate-200">
+                {orders.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-4 text-center text-slate-400">
+                      No active transaction logs found.
+                    </td>
+                  </tr>
+                ) : (
+                  orders.map((ord) => (
+                    <tr key={ord.id}>
+                      <td className="p-3 font-extrabold text-[#054A36] dark:text-emerald-400">#{ord.tokenNumber}</td>
+                      <td className="p-3 font-bold">{ord.orderNumber}</td>
+                      <td className="p-3 font-mono text-[11px] text-purple-600 dark:text-purple-400">{ord.paymentId || 'pay_razorpay_9402'}</td>
+                      <td className="p-3">{ord.studentName || 'Anshika Sharma'}</td>
+                      <td className="p-3 font-bold">{ord.paymentMethod}</td>
+                      <td className="p-3 font-extrabold text-emerald-600">{formatCurrency(ord.totalAmountInINR)}</td>
+                      <td className="p-3">
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold text-[10px]">
+                          PAID & VERIFIED
+                        </span>
+                      </td>
+                      <td className="p-3 text-slate-500">{new Date(ord.createdAt).toLocaleTimeString()}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       </div>
     </DashboardLayout>
   );

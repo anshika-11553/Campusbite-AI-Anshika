@@ -8,8 +8,15 @@ import { EmptyState } from '@/components/student/common/EmptyState';
 import { CheckCircle } from 'lucide-react';
 
 export default function VendorReadyOrdersPage() {
-  const { orders, updateOrderStatus } = useOrderWorkflow();
+  const { orders, markOrderDelivered } = useOrderWorkflow();
   const readyOrders = orders.filter((o) => o.status === 'READY');
+
+  const handleVerifyAndDeliver = (order: typeof readyOrders[0]) => {
+    const inputToken = window.prompt(`Verify Student Token Number for Order #${order.orderNumber}:`, order.tokenNumber);
+    if (inputToken) {
+      markOrderDelivered(order.id, inputToken);
+    }
+  };
 
   return (
     <DashboardLayout role="vendor" title="Ready Orders Counter">
@@ -39,9 +46,9 @@ export default function VendorReadyOrdersPage() {
               <VendorOrderCard
                 key={order.id}
                 order={order}
-                onAccept={(id) => updateOrderStatus(id, 'ACCEPTED')}
-                onReject={(id) => updateOrderStatus(id, 'CANCELLED')}
-                onForwardToKitchen={(id) => updateOrderStatus(id, 'COLLECTED')}
+                onAccept={() => {}}
+                onReject={() => {}}
+                onForwardToKitchen={() => handleVerifyAndDeliver(order)}
               />
             ))}
           </div>

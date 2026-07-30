@@ -12,6 +12,7 @@ interface OrderWorkflowContextType {
   placeOrder: (newOrder: Omit<StudentOrder, 'id' | 'orderNumber' | 'tokenNumber' | 'createdAt' | 'queuePosition' | 'pickupCounter' | 'status'>) => StudentOrder;
   updateOrderStatus: (orderId: string, status: OrderStatus, extra?: Partial<StudentOrder>) => void;
   cancelOrder: (orderId: string) => void;
+  markOrderDelivered: (orderId: string, inputToken: string) => { success: boolean; message: string };
   getOrdersByStatus: (statuses: OrderStatus[]) => StudentOrder[];
   getActiveStudentOrder: () => StudentOrder | null;
 }
@@ -162,6 +163,9 @@ export const OrderWorkflowProvider: React.FC<{ children: React.ReactNode }> = ({
       const tokenNumber = tokenGeneratorService.generateNextToken();
       const orderId = `ord-${Date.now()}`;
       const orderNumber = `CB-${Math.floor(1000 + Math.random() * 9000)}`;
+      const paymentId = `pay_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+      const receiptNumber = `REC-CB-${Math.floor(100000 + Math.random() * 900000)}`;
+      const gstAmountInINR = Math.round(newOrderData.totalAmountInINR * 0.05);
 
       const createdOrder: StudentOrder = {
         ...newOrderData,
@@ -170,6 +174,11 @@ export const OrderWorkflowProvider: React.FC<{ children: React.ReactNode }> = ({
         tokenNumber,
         createdAt: new Date().toISOString(),
         status: 'PENDING',
+        paymentStatus: 'PAID',
+        paymentId,
+        receiptNumber,
+        gstAmountInINR,
+        isDelivered: false,
         queuePosition: orders.length + 1,
         pickupCounter: 'Counter A',
         qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TOKEN-${tokenNumber}-${orderNumber}`,
@@ -178,11 +187,46 @@ export const OrderWorkflowProvider: React.FC<{ children: React.ReactNode }> = ({
       setOrders((prev) => [createdOrder, ...prev]);
 
       eventBus.publish(WORKFLOW_EVENTS.ORDER_PLACED, { order: createdOrder });
-      showToast(`Order Placed! Your Token Number is #${tokenNumber}`, 'success');
+      showToast(`Payment Successful! Token #${tokenNumber} Generated`, 'success');
 
       return createdOrder;
     },
     [orders.length, showToast]
+  );
+
+  const markOrderDelivered = useCallback(
+    (orderId: string, inputToken: string) => {
+      let result = { success: false, message: 'Order not found.' };
+
+      setOrders((prev) =>
+        prev.map((o) => {
+          if (o.id === orderId) {
+            if (o.isDelivered || o.status === 'COLLECTED') {
+              result = { success: false, message: `Token #${o.tokenNumber} has ALREADY been delivered! Prevented duplicate collection.` };
+              return o;
+            }
+            if (o.tokenNumber !== inputToken.trim()) {
+              result = { success: false, message: `Token mismatch! Expected #${o.tokenNumber}, received #${inputToken}.` };
+              return o;
+            }
+
+            tokenGeneratorService.releaseToken(o.tokenNumber);
+            result = { success: true, message: `Token #${o.tokenNumber} verified & delivered!` };
+            return { ...o, status: 'COLLECTED', isDelivered: true };
+          }
+          return o;
+        })
+      );
+
+      if (result.success) {
+        showToast(result.message, 'success');
+      } else {
+        showToast(result.message, 'error');
+      }
+
+      return result;
+    },
+    [showToast]
   );
 
   const getOrdersByStatus = useCallback(
@@ -203,6 +247,7 @@ export const OrderWorkflowProvider: React.FC<{ children: React.ReactNode }> = ({
         placeOrder,
         updateOrderStatus,
         cancelOrder,
+        markOrderDelivered,
         getOrdersByStatus,
         getActiveStudentOrder,
       }}

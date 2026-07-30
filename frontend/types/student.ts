@@ -60,6 +60,11 @@ export interface StudentOrder {
   preparedBy?: string;
   isPaused?: boolean;
   rating?: number;
+  paymentId?: string;
+  paymentStatus?: 'PAID' | 'PENDING' | 'REFUNDED';
+  receiptNumber?: string;
+  isDelivered?: boolean;
+  gstAmountInINR?: number;
 }
 
 export interface QueueStatus {
