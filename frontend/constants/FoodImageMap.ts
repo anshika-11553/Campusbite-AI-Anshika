@@ -52,6 +52,8 @@ export const FOOD_IMAGE_MAP: Record<string, string> = {
   'Vanilla Bean Ice Cream Scoop': '/images/menu/vanilla-ice-cream.jpg',
   'Chocolate Brownie Sundae': '/images/menu/brownie-sundae.jpg',
   'Belgian Dark Chocolate Pastry': '/images/menu/dark-chocolate-pastry.jpg',
+  'Fresh Bengali Rasgulla': '/images/menu/rasgulla.jpg',
+  'Warm Choco Lava Cake': '/images/menu/choco-lava-cake.jpg',
 };
 
 export const getFoodImageByName = (foodName: string): string => {
