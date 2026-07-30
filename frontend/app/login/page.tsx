@@ -83,6 +83,15 @@ export default function LoginPage() {
             </div>
 
             <LoginForm />
+
+            <div className="mt-6 pt-4 border-t border-slate-100 text-center">
+              <p className="text-xs text-slate-500">
+                Don&apos;t have a campus account?{' '}
+                <a href="/register" className="font-extrabold text-[#054A36] hover:underline">
+                  Create Account
+                </a>
+              </p>
+            </div>
           </Card>
         </div>
       </div>
