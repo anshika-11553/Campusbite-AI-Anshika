@@ -35,8 +35,8 @@ export const ROLE_METADATA_LIST: RoleMetadata[] = [
   },
   {
     id: 'chief',
-    label: 'Chief Admin',
-    description: 'System-wide analytics & supervision',
+    label: 'Head Chef',
+    description: 'Monitor kitchen operations & cooking progress',
     redirectPath: '/chief',
   },
 ];

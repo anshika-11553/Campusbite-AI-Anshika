@@ -9,6 +9,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
   const { logout } = useAuth();
+  const roleLabel = role === 'chief' ? 'Head Chef' : role;
 
   return (
     <aside className="w-full md:w-64 bg-[#054A36] text-white p-4 md:p-6 flex flex-col justify-between shrink-0 shadow-lg">
@@ -20,7 +21,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
           <div>
             <h2 className="font-bold text-base tracking-tight">CampusBite AI</h2>
             <span className="text-[10px] uppercase font-semibold tracking-wider text-emerald-300/80">
-              {role} Portal
+              {roleLabel} Portal
             </span>
           </div>
         </div>
