@@ -1,5 +1,8 @@
 import { register, login } from "../services/auth.service.js";
 
+// ==========================
+// Register Controller
+// ==========================
 export const registerController = async (req, res) => {
   try {
     const { full_name, email, password } = req.body;
@@ -32,6 +35,9 @@ export const registerController = async (req, res) => {
   }
 };
 
+// ==========================
+// Login Controller
+// ==========================
 export const loginController = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -55,6 +61,26 @@ export const loginController = async (req, res) => {
     });
   } catch (error) {
     console.error("Login Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ==========================
+// Profile Controller
+// ==========================
+export const profileController = async (req, res) => {
+  try {
+    return res.status(200).json({
+      success: true,
+      message: "Profile fetched successfully",
+      data: req.user,
+    });
+  } catch (error) {
+    console.error("Profile Error:", error);
 
     return res.status(500).json({
       success: false,
