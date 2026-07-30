@@ -50,7 +50,7 @@ export type DashboardTab = 'menu' | 'queue' | 'orders' | 'analytics';
 export default function StudentDashboardPage() {
   const { addItem, itemCount, setIsCartOpen } = useCart();
   const { showToast } = useToast();
-  const { orders, placeOrder, updateOrderStatus, getActiveStudentOrder } = useOrderWorkflow();
+  const { orders, placeOrder, updateOrderStatus, cancelOrder, getActiveStudentOrder } = useOrderWorkflow();
 
   const [activeTab, setActiveTab] = useState<DashboardTab>('menu');
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -397,6 +397,7 @@ export default function StudentDashboardPage() {
               <TokenCard
                 order={activeOrder}
                 onConfirmCollection={(id) => updateOrderStatus(id, 'COLLECTED')}
+                onCancelOrder={(id) => cancelOrder(id)}
               />
             ) : (
               <EmptyState

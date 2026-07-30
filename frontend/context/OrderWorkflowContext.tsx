@@ -11,6 +11,7 @@ interface OrderWorkflowContextType {
   orders: StudentOrder[];
   placeOrder: (newOrder: Omit<StudentOrder, 'id' | 'orderNumber' | 'tokenNumber' | 'createdAt' | 'queuePosition' | 'pickupCounter' | 'status'>) => StudentOrder;
   updateOrderStatus: (orderId: string, status: OrderStatus, extra?: Partial<StudentOrder>) => void;
+  cancelOrder: (orderId: string) => void;
   getOrdersByStatus: (statuses: OrderStatus[]) => StudentOrder[];
   getActiveStudentOrder: () => StudentOrder | null;
 }
@@ -130,6 +131,17 @@ export const OrderWorkflowProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   }, []);
 
+  const cancelOrder = useCallback((orderId: string) => {
+    setOrders((prev) => {
+      const target = prev.find((o) => o.id === orderId);
+      if (target) {
+        tokenGeneratorService.releaseToken(target.tokenNumber);
+        showToast(`Order #${target.orderNumber} (Token #${target.tokenNumber}) Cancelled.`, 'info');
+      }
+      return prev.map((o) => (o.id === orderId ? { ...o, status: 'CANCELLED' } : o));
+    });
+  }, [showToast]);
+
   const placeOrder = useCallback(
     (newOrderData: Omit<StudentOrder, 'id' | 'orderNumber' | 'tokenNumber' | 'createdAt' | 'queuePosition' | 'pickupCounter' | 'status'>) => {
       const tokenNumber = tokenGeneratorService.generateNextToken();
@@ -175,6 +187,7 @@ export const OrderWorkflowProvider: React.FC<{ children: React.ReactNode }> = ({
         orders,
         placeOrder,
         updateOrderStatus,
+        cancelOrder,
         getOrdersByStatus,
         getActiveStudentOrder,
       }}
