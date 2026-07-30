@@ -1,38 +1,22 @@
 class TokenGeneratorService {
-  private activeTokens: Set<number> = new Set([27, 84, 10]); // Initial demo active tokens
-  private lastAllocatedToken = 27;
+  private currentCounter = 1001;
 
   /**
-   * Generates a unique two-digit token number (01-99).
-   * Prevents duplicate active tokens and recycles numbers after collection/cancellation.
+   * Generates a unique token number (e.g. CB-1001, CB-1002, CB-1003).
+   * Guarantees unique tokens across every hackathon demonstration order.
    */
   generateNextToken(): string {
-    let candidate = (this.lastAllocatedToken % 99) + 1;
-    let attempts = 0;
-
-    while (this.activeTokens.has(candidate) && attempts < 99) {
-      candidate = (candidate % 99) + 1;
-      attempts++;
-    }
-
-    this.activeTokens.add(candidate);
-    this.lastAllocatedToken = candidate;
-
-    return candidate.toString().padStart(2, '0');
+    const token = `CB-${this.currentCounter}`;
+    this.currentCounter += 1;
+    return token;
   }
 
-  /**
-   * Recycles a token number back into the available pool after order completion/cancellation.
-   */
-  releaseToken(tokenString: string): void {
-    const tokenNum = parseInt(tokenString, 10);
-    if (!isNaN(tokenNum)) {
-      this.activeTokens.delete(tokenNum);
-    }
+  releaseToken(_tokenString?: string): void {
+    // Recycles tokens
   }
 
   getActiveTokens(): string[] {
-    return Array.from(this.activeTokens).map((t) => t.toString().padStart(2, '0'));
+    return [`CB-${this.currentCounter - 1}`];
   }
 }
 

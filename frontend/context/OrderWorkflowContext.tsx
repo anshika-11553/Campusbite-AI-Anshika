@@ -23,7 +23,7 @@ const INITIAL_DEMO_ORDERS: StudentOrder[] = [
   {
     id: 'ord-101',
     orderNumber: 'CB-8492',
-    tokenNumber: '27',
+    tokenNumber: 'CB-1001',
     studentId: 'std-user-1',
     studentName: 'Anshika Sharma',
     vendorName: 'Main Campus Food Court',

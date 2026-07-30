@@ -68,7 +68,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ order, isOpen, onClo
           </div>
           <div>
             <span className="text-slate-400 block font-medium">Payment Method</span>
-            <span className="font-bold text-slate-800 dark:text-slate-200">{order.paymentMethod}</span>
+            <span className="font-bold text-slate-800 dark:text-slate-200">UPI QR Payment</span>
           </div>
           <div>
             <span className="text-slate-400 block font-medium">Payment Status</span>
