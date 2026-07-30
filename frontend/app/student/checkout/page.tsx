@@ -15,6 +15,9 @@ import { ReceiptModal } from '@/components/student/orders/ReceiptModal';
 import { ShoppingBag, Clock, CheckCircle2, QrCode, Download, ArrowRight, ShieldCheck, AlertCircle, Store } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 
+import { paymentVerificationService } from '@/services/payment/paymentVerificationService';
+import { PaymentRecord } from '@/types/payment';
+
 export default function StudentCheckoutPage() {
   const router = useRouter();
   const { items, totalAmountInINR, clearCart } = useCart();
@@ -23,8 +26,11 @@ export default function StudentCheckoutPage() {
   const { showToast } = useToast();
 
   const [pickupSlot, setPickupSlot] = useState<string>('Instant Pickup (10-15 mins)');
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Payment Verification State
+  const [paymentRecord, setPaymentRecord] = useState<PaymentRecord | null>(null);
+  const [isVerifying, setIsVerifying] = useState<boolean>(false);
 
   // Confirmed Order State
   const [createdOrder, setCreatedOrder] = useState<StudentOrder | null>(null);
@@ -37,8 +43,50 @@ export default function StudentCheckoutPage() {
   const gstAmount = Math.round(totalAmountInINR * 0.05);
   const totalWithGst = totalAmountInINR;
 
-  const handleConfirmPaymentYes = () => {
-    setIsConfirmModalOpen(false);
+  const isQrAvailable = Boolean(vendorProfile?.qrCodeUrl && vendorProfile?.isQrActive);
+
+  // Create PENDING Payment record when student views QR
+  const handleInitiatePayment = () => {
+    if (!isQrAvailable) return;
+
+    const tempOrderId = `ord-${Date.now()}`;
+    const tempOrderNum = `CB-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const record = paymentVerificationService.createPendingPaymentRecord(
+      tempOrderId,
+      tempOrderNum,
+      'std-user-1',
+      'Anshika Sharma',
+      vendorProfile.vendorId,
+      vendorProfile.vendorName,
+      vendorProfile.outletName,
+      totalWithGst,
+      vendorProfile.upiId
+    );
+
+    setPaymentRecord(record);
+    showToast('Payment initiated with status PENDING. Waiting for Vendor verification...', 'info');
+  };
+
+  // Poll / Check payment verification status
+  const handleCheckVendorVerification = () => {
+    if (!paymentRecord) return;
+    setIsVerifying(true);
+    setTimeout(() => {
+      const updatedRecord = paymentVerificationService.getPaymentStatusByOrderId(paymentRecord.orderId);
+      if (updatedRecord && updatedRecord.status === 'PAID') {
+        setPaymentRecord(updatedRecord);
+        showToast('Payment Verified by Vendor! You can now generate your pickup token.', 'success');
+      } else {
+        showToast('Payment is still PENDING vendor verification. Please ask vendor to verify in their dashboard.', 'warning');
+      }
+      setIsVerifying(false);
+    }, 400);
+  };
+
+  // Generate Token once payment status = PAID
+  const handleGenerateToken = () => {
+    if (!paymentRecord || paymentRecord.status !== 'PAID') return;
     setIsSubmitting(true);
 
     setTimeout(() => {
@@ -61,7 +109,7 @@ export default function StudentCheckoutPage() {
       clearCart();
       setCreatedOrder(order);
       setIsSubmitting(false);
-      showToast(`Payment Verified for ${vendorProfile.outletName}! Token #${order.tokenNumber} Generated`, 'success');
+      showToast(`Token #${order.tokenNumber} Generated & synced across all dashboards!`, 'success');
     }, 400);
   };
 
@@ -198,7 +246,7 @@ export default function StudentCheckoutPage() {
               </Card>
             </div>
 
-            {/* Right Side: Vendor Specific QR Code Display & Payment Instructions */}
+            {/* Right Side: Vendor Specific QR Code Display & Payment Verification Lock */}
             <div className="lg:col-span-5 space-y-4">
               <Card className="p-6 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-center space-y-4 shadow-md">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
@@ -213,87 +261,131 @@ export default function StudentCheckoutPage() {
                   <ShieldCheck className="h-5 w-5 text-emerald-600" />
                 </div>
 
-                {/* Vendor QR Code Container */}
-                <div className="p-3 bg-white border-2 border-dashed border-emerald-500 rounded-2xl inline-block shadow-inner mx-auto">
-                  <Image
-                    src={vendorProfile.qrCodeUrl}
-                    alt={`${vendorProfile.outletName} UPI QR Code`}
-                    width={220}
-                    height={220}
-                    unoptimized
-                    priority
-                    className="rounded-xl mx-auto object-contain"
-                  />
-                </div>
+                {/* EMPTY STATE: Vendor Has Not Uploaded QR */}
+                {!isQrAvailable ? (
+                  <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl space-y-3 my-2">
+                    <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-600 mx-auto flex items-center justify-center">
+                      <QrCode className="h-8 w-8" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                        No Payment QR Uploaded Yet
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                        This canteen vendor has not uploaded their personal payment QR code. Pre-orders cannot be placed at this time.
+                      </p>
+                    </div>
+                    <span className="px-3 py-1 rounded-full bg-red-100 text-red-800 text-[10px] font-bold inline-block">
+                      PAYMENT DISABLED
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    {/* Live Vendor QR Code Image Container */}
+                    <div className="p-3 bg-white border-2 border-dashed border-emerald-500 rounded-2xl inline-block shadow-inner mx-auto">
+                      <Image
+                        src={vendorProfile.qrCodeUrl}
+                        alt={`${vendorProfile.outletName} UPI QR Code`}
+                        width={220}
+                        height={220}
+                        unoptimized
+                        priority
+                        className="rounded-xl mx-auto object-contain"
+                      />
+                    </div>
 
-                <div className="space-y-1 text-xs">
-                  <p className="font-extrabold text-slate-800 dark:text-slate-200">
-                    Scan Vendor QR using any UPI App
-                  </p>
-                  <p className="font-mono text-[11px] text-[#054A36] dark:text-emerald-400 font-bold">
-                    UPI ID: {vendorProfile.upiId}
-                  </p>
-                  <p className="text-xs text-emerald-700 dark:text-emerald-400 font-bold pt-1">
-                    Pay Exactly: {formatCurrency(totalWithGst)}
-                  </p>
-                </div>
+                    <div className="space-y-1 text-xs">
+                      <p className="font-extrabold text-slate-800 dark:text-slate-200">
+                        Scan Vendor QR using GPay / PhonePe / Paytm
+                      </p>
+                      <p className="font-mono text-[11px] text-[#054A36] dark:text-emerald-400 font-bold">
+                        UPI ID: {vendorProfile.upiId}
+                      </p>
+                      <p className="text-xs text-emerald-700 dark:text-emerald-400 font-bold pt-1">
+                        Pay Exactly: {formatCurrency(totalWithGst)}
+                      </p>
+                    </div>
+                  </>
+                )}
 
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <p className="text-[11px] text-slate-400 mb-3">
-                    After completing the UPI payment to {vendorProfile.vendorName}, click below to generate your token.
-                  </p>
-                  <Button
-                    variant="primary"
-                    size="lg"
-                    onClick={() => setIsConfirmModalOpen(true)}
-                    disabled={isSubmitting}
-                    rightIcon={<ArrowRight className="h-4 w-4" />}
-                    className="w-full bg-[#054A36] hover:bg-emerald-800 text-white font-extrabold py-3.5 rounded-xl shadow-lg"
-                  >
-                    I Have Completed Payment
-                  </Button>
-                </div>
+                {/* PAYMENT STATUS & TOKEN GENERATION ACTIONS */}
+                {isQrAvailable && (
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                    {!paymentRecord ? (
+                      <div>
+                        <p className="text-[11px] text-slate-400 mb-2">
+                          After transferring ₹{totalWithGst} to {vendorProfile.vendorName}, click below to create a payment verification record.
+                        </p>
+                        <Button
+                          variant="primary"
+                          size="lg"
+                          onClick={handleInitiatePayment}
+                          className="w-full bg-[#054A36] hover:bg-emerald-800 text-white font-extrabold py-3 rounded-xl shadow-md"
+                        >
+                          I Have Transferred UPI Payment
+                        </Button>
+                      </div>
+                    ) : paymentRecord.status === 'PENDING' ? (
+                      <div className="space-y-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-xl">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1">
+                            <AlertCircle className="h-4 w-4 text-amber-600" />
+                            Payment Status: PENDING
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono">Ref: {paymentRecord.orderNumber}</span>
+                        </div>
+                        <p className="text-[11px] text-amber-800 dark:text-amber-400 text-left">
+                          Waiting for vendor verification... Student cannot generate token until vendor confirms payment in dashboard.
+                        </p>
+
+                        {/* DISABLED BUTTON WITH TOOLTIP INDICATOR */}
+                        <div className="pt-1 flex gap-2">
+                          <Button
+                            variant="primary"
+                            size="md"
+                            disabled
+                            title="Waiting for payment verification..."
+                            className="w-2/3 opacity-50 cursor-not-allowed bg-slate-400 text-white font-bold text-xs"
+                          >
+                            Waiting for Vendor Verification...
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="md"
+                            onClick={handleCheckVendorVerification}
+                            disabled={isVerifying}
+                            className="w-1/3 text-xs border-amber-400 text-amber-800 font-bold"
+                          >
+                            {isVerifying ? 'Checking...' : 'Check Verification'}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* PAYMENT STATUS = PAID: ENABLE GENERATE TOKEN */
+                      <div className="space-y-2 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-xl">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            Payment Status: VERIFIED & PAID
+                          </span>
+                        </div>
+
+                        <Button
+                          variant="primary"
+                          size="lg"
+                          onClick={handleGenerateToken}
+                          disabled={isSubmitting}
+                          rightIcon={<ArrowRight className="h-4 w-4" />}
+                          className="w-full bg-[#054A36] hover:bg-emerald-800 text-white font-extrabold py-3.5 rounded-xl shadow-lg animate-bounce [animation-duration:2s]"
+                        >
+                          Generate Token & Confirm Order
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </Card>
             </div>
-          </div>
-        )}
-
-        {/* Confirmation Modal */}
-        {isConfirmModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
-            <Card className="w-full max-w-md p-6 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 space-y-5 shadow-2xl rounded-2xl text-center">
-              <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 mx-auto flex items-center justify-center">
-                <AlertCircle className="h-6 w-6" />
-              </div>
-
-              <div>
-                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">
-                  Confirm Payment Completion
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Have you successfully completed the UPI payment of <span className="font-bold text-[#054A36] dark:text-emerald-400">{formatCurrency(totalWithGst)}</span> to <span className="font-bold text-slate-800 dark:text-slate-200">{vendorProfile.outletName}</span> ({vendorProfile.upiId})?
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3 pt-2">
-                <Button
-                  variant="outline"
-                  size="md"
-                  onClick={() => setIsConfirmModalOpen(false)}
-                  className="w-1/2 border-slate-300 dark:border-slate-700"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={handleConfirmPaymentYes}
-                  className="w-1/2 bg-[#054A36] text-white font-extrabold"
-                >
-                  Yes, Payment Completed
-                </Button>
-              </div>
-            </Card>
           </div>
         )}
 

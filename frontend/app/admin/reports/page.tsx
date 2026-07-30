@@ -6,6 +6,7 @@ import { useOrderWorkflow } from '@/context/OrderWorkflowContext';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { formatCurrency } from '@/constants/currency';
+import { paymentVerificationService } from '@/services/payment/paymentVerificationService';
 import { BarChart3, Download, TrendingUp, DollarSign, Calendar, RefreshCcw, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 
@@ -194,6 +195,77 @@ export default function AdminReportsPage() {
                         </span>
                       </td>
                       <td className="p-3 text-slate-500">{new Date(ord.createdAt).toLocaleTimeString()}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        {/* Admin Vendor UPI Verification Audit Table */}
+        <Card className="p-6 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                <FileText className="h-4 w-4 text-purple-600" />
+                Vendor UPI Payment Verification Audit Log
+              </h3>
+              <p className="text-xs text-slate-500">
+                Audit student UPI payment records, vendor verification timestamps, and transaction status
+              </p>
+            </div>
+            <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-xs font-extrabold rounded-full">
+              Full System Audit
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase font-bold border-b">
+                <tr>
+                  <th className="p-3">Payment ID</th>
+                  <th className="p-3">Order Ref</th>
+                  <th className="p-3">Student Name</th>
+                  <th className="p-3">Vendor Outlet</th>
+                  <th className="p-3">Amount</th>
+                  <th className="p-3">UPI ID</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3">Created At</th>
+                  <th className="p-3">Verification Time</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-800 dark:text-slate-200">
+                {paymentVerificationService.getAllPaymentLogs().length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="p-4 text-center text-slate-400">
+                      No vendor payment verification logs generated yet.
+                    </td>
+                  </tr>
+                ) : (
+                  paymentVerificationService.getAllPaymentLogs().map((rec) => (
+                    <tr key={rec.id}>
+                      <td className="p-3 font-mono text-[11px] text-purple-600">{rec.id}</td>
+                      <td className="p-3 font-bold">{rec.orderNumber}</td>
+                      <td className="p-3 font-bold text-slate-900 dark:text-white">{rec.studentName}</td>
+                      <td className="p-3">{rec.outletName}</td>
+                      <td className="p-3 font-extrabold text-emerald-600">{formatCurrency(rec.amountInINR)}</td>
+                      <td className="p-3 font-mono text-[11px] text-slate-500">{rec.upiId}</td>
+                      <td className="p-3">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                            rec.status === 'PAID'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                              : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                          }`}
+                        >
+                          {rec.status}
+                        </span>
+                      </td>
+                      <td className="p-3 text-slate-500">{new Date(rec.createdAt).toLocaleTimeString()}</td>
+                      <td className="p-3 text-slate-500">
+                        {rec.verifiedAt ? new Date(rec.verifiedAt).toLocaleTimeString() : 'Pending Vendor Verification'}
+                      </td>
                     </tr>
                   ))
                 )}

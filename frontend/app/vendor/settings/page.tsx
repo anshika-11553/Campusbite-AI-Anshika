@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useVendor } from '@/context/VendorContext';
 import { useToast } from '@/hooks/useToast';
+import { paymentVerificationService } from '@/services/payment/paymentVerificationService';
+import { PaymentRecord } from '@/types/payment';
 import { QrCode, Upload, Trash2, RefreshCw, Save, Store, User, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
 export default function VendorSettingsPage() {
@@ -24,6 +26,11 @@ export default function VendorSettingsPage() {
   const handleQrUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Check size limit: 5MB max
+    if (file.size > 5 * 1024 * 1024) {
+      return showToast('Image file size exceeds 5MB limit. Please choose a smaller image.', 'error');
+    }
 
     // Validate image format
     const validFormats = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
@@ -43,8 +50,8 @@ export default function VendorSettingsPage() {
   };
 
   const handleRemoveQr = () => {
-    setQrCodeUrl('/payment/vendor-upi.png');
-    showToast('Reset QR code to default merchant template.', 'info');
+    setQrCodeUrl('');
+    showToast('Payment QR Code removed. Student checkout will display "No Payment QR Uploaded Yet".', 'warning');
   };
 
   const handleSaveChanges = () => {
@@ -216,7 +223,84 @@ export default function VendorSettingsPage() {
             </Card>
           </div>
         </div>
+
+        {/* 💳 Payment Verification Section */}
+        <Card className="p-6 border-emerald-200 dark:border-emerald-900 bg-white dark:bg-slate-900 space-y-4 shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div>
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                Payment Verification Queue
+              </h3>
+              <p className="text-xs text-slate-500">
+                Confirm student UPI payments before issuing pickup tokens (`PENDING` → `PAID`)
+              </p>
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-xs font-extrabold">
+              Live Verification Queue
+            </span>
+          </div>
+
+          <VendorPaymentVerificationTable vendorId={currentVendor.vendorId} />
+        </Card>
       </div>
     </DashboardLayout>
+  );
+}
+
+function VendorPaymentVerificationTable({ vendorId }: { vendorId: string }) {
+  const { showToast } = useToast();
+  const [payments, setPayments] = useState<PaymentRecord[]>(() =>
+    paymentVerificationService.getPendingPaymentsForVendor(vendorId)
+  );
+
+  const handleVerify = (payId: string) => {
+    const res = paymentVerificationService.verifyPaymentByVendor(payId, vendorId);
+    if (res.success) {
+      showToast(res.message, 'success');
+      setPayments(paymentVerificationService.getPendingPaymentsForVendor(vendorId));
+    }
+  };
+
+  const pendingList = payments.filter((p) => p.status === 'PENDING');
+
+  if (pendingList.length === 0) {
+    return (
+      <div className="p-6 text-center text-xs text-slate-500 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl space-y-1">
+        <CheckCircle2 className="h-6 w-6 text-emerald-500 mx-auto" />
+        <p className="font-bold text-slate-700 dark:text-slate-300">All Student Payments Verified!</p>
+        <p className="text-[11px] text-slate-400">No pending UPI verification requests in queue.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden text-xs">
+      {pendingList.map((p) => (
+        <div key={p.id} className="p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-900 dark:text-white">{p.studentName}</span>
+              <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold">
+                {p.status}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              Order #{p.orderNumber} • Amount: <strong className="text-slate-900 dark:text-white">₹{p.amountInINR}</strong> • {new Date(p.createdAt).toLocaleTimeString()}
+            </p>
+          </div>
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => handleVerify(p.id)}
+            leftIcon={<CheckCircle2 className="h-3.5 w-3.5" />}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shrink-0"
+          >
+            Verify Payment (Mark PAID)
+          </Button>
+        </div>
+      ))}
+    </div>
   );
 }
