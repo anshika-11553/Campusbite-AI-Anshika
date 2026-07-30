@@ -42,8 +42,10 @@ export interface IStudentApiService {
 class StudentApiService implements IStudentApiService {
   async getMenu(): Promise<ApiResponse<MenuItem[]>> {
     try {
-      // TODO: Replace with backend API endpoint: GET /api/v1/student/menu
-      const response = await apiClient.get<ApiResponse<MenuItem[]>>('/v1/student/menu');
+      const response = await Promise.race([
+        apiClient.get<ApiResponse<MenuItem[]>>('/v1/student/menu'),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 800)),
+      ]);
       return response.data;
     } catch {
       return {
@@ -740,8 +742,10 @@ class StudentApiService implements IStudentApiService {
 
   async getCategories(): Promise<ApiResponse<Category[]>> {
     try {
-      // TODO: Replace with backend API endpoint: GET /api/v1/student/categories
-      const response = await apiClient.get<ApiResponse<Category[]>>('/v1/student/categories');
+      const response = await Promise.race([
+        apiClient.get<ApiResponse<Category[]>>('/v1/student/categories'),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 800)),
+      ]);
       return response.data;
     } catch {
       return {

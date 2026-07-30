@@ -70,26 +70,36 @@ export const OrderWorkflowProvider: React.FC<{ children: React.ReactNode }> = ({
   const { showToast } = useToast();
   const [orders, setOrders] = useState<StudentOrder[]>(INITIAL_DEMO_ORDERS);
 
+  // Track toasted event keys to guarantee single notification delivery
+  const toastedKeysRef = React.useRef<Set<string>>(new Set());
+
+  const notifyOnce = useCallback((key: string, msg: string, type: 'success' | 'info' | 'warning' | 'error') => {
+    if (!toastedKeysRef.current.has(key)) {
+      toastedKeysRef.current.add(key);
+      showToast(msg, type);
+    }
+  }, [showToast]);
+
   // Handle EventBus Subscriptions for Cross-Dashboard Notification Alerts
   useEffect(() => {
     const unsubAccepted = eventBus.subscribe<{ order: StudentOrder }>(WORKFLOW_EVENTS.ORDER_ACCEPTED, ({ order }) => {
-      showToast(`Token #${order.tokenNumber} Accepted by Vendor!`, 'success');
+      notifyOnce(`ACCEPTED-${order.id}`, `Token #${order.tokenNumber} Accepted by Vendor!`, 'success');
     });
 
     const unsubForwarded = eventBus.subscribe<{ order: StudentOrder }>(WORKFLOW_EVENTS.FORWARDED_TO_KITCHEN, ({ order }) => {
-      showToast(`Token #${order.tokenNumber} Forwarded to Kitchen Queue.`, 'info');
+      notifyOnce(`FORWARDED-${order.id}`, `Token #${order.tokenNumber} Forwarded to Kitchen Queue.`, 'info');
     });
 
     const unsubPreparing = eventBus.subscribe<{ order: StudentOrder }>(WORKFLOW_EVENTS.PREPARATION_STARTED, ({ order }) => {
-      showToast(`Head Chef started preparing Token #${order.tokenNumber}! 🔥`, 'info');
+      notifyOnce(`PREPARING-${order.id}`, `Head Chef started preparing Token #${order.tokenNumber}! 🔥`, 'info');
     });
 
     const unsubReady = eventBus.subscribe<{ order: StudentOrder }>(WORKFLOW_EVENTS.ORDER_READY, ({ order }) => {
-      showToast(`🎉 Token #${order.tokenNumber} is READY for Pickup at ${order.pickupCounter || 'Counter A'}!`, 'success');
+      notifyOnce(`READY-${order.id}`, `🎉 Token #${order.tokenNumber} is READY for Pickup at ${order.pickupCounter || 'Counter A'}!`, 'success');
     });
 
     const unsubCollected = eventBus.subscribe<{ order: StudentOrder }>(WORKFLOW_EVENTS.ORDER_COLLECTED, ({ order }) => {
-      showToast(`Token #${order.tokenNumber} collected. Thank you!`, 'success');
+      notifyOnce(`COLLECTED-${order.id}`, `Token #${order.tokenNumber} collected. Thank you!`, 'success');
     });
 
     return () => {
@@ -99,9 +109,11 @@ export const OrderWorkflowProvider: React.FC<{ children: React.ReactNode }> = ({
       unsubReady();
       unsubCollected();
     };
-  }, [showToast]);
+  }, [notifyOnce]);
 
   const updateOrderStatus = useCallback((orderId: string, status: OrderStatus, extra?: Partial<StudentOrder>) => {
+    let targetOrder: StudentOrder | undefined;
+
     setOrders((prev) => {
       const updated = prev.map((order) => {
         if (order.id === orderId) {
@@ -115,13 +127,7 @@ export const OrderWorkflowProvider: React.FC<{ children: React.ReactNode }> = ({
             tokenGeneratorService.releaseToken(order.tokenNumber);
           }
 
-          // Trigger EventBus
-          if (status === 'ACCEPTED') eventBus.publish(WORKFLOW_EVENTS.ORDER_ACCEPTED, { order: nextOrder });
-          if (status === 'SENT_TO_KITCHEN') eventBus.publish(WORKFLOW_EVENTS.FORWARDED_TO_KITCHEN, { order: nextOrder });
-          if (status === 'PREPARING') eventBus.publish(WORKFLOW_EVENTS.PREPARATION_STARTED, { order: nextOrder });
-          if (status === 'READY') eventBus.publish(WORKFLOW_EVENTS.ORDER_READY, { order: nextOrder });
-          if (status === 'COLLECTED') eventBus.publish(WORKFLOW_EVENTS.ORDER_COLLECTED, { order: nextOrder });
-
+          targetOrder = nextOrder;
           return nextOrder;
         }
         return order;
@@ -129,6 +135,15 @@ export const OrderWorkflowProvider: React.FC<{ children: React.ReactNode }> = ({
 
       return updated;
     });
+
+    if (targetOrder) {
+      const order = targetOrder;
+      if (status === 'ACCEPTED') eventBus.publish(WORKFLOW_EVENTS.ORDER_ACCEPTED, { order });
+      if (status === 'SENT_TO_KITCHEN') eventBus.publish(WORKFLOW_EVENTS.FORWARDED_TO_KITCHEN, { order });
+      if (status === 'PREPARING') eventBus.publish(WORKFLOW_EVENTS.PREPARATION_STARTED, { order });
+      if (status === 'READY') eventBus.publish(WORKFLOW_EVENTS.ORDER_READY, { order });
+      if (status === 'COLLECTED') eventBus.publish(WORKFLOW_EVENTS.ORDER_COLLECTED, { order });
+    }
   }, []);
 
   const cancelOrder = useCallback((orderId: string) => {
