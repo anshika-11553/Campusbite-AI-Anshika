@@ -1,26 +1,19 @@
 import express from "express";
-import {
-  registerController,
-  loginController,
-  profileController,
-} from "../controllers/auth.controller.js";
-
+import { placeOrderController } from "../controllers/order.controller.js";
 import { authenticateUser } from "../middleware/auth.middleware.js";
 import { authorizeRoles } from "../middleware/role.middleware.js";
 import { ROLES } from "../constants/roles.js";
 
 const router = express.Router();
 
-// Public Routes
-router.post("/register", registerController);
-router.post("/login", loginController);
-
-// Protected Routes
-router.get(
-  "/profile",
+// ==========================
+// Place Order
+// ==========================
+router.post(
+  "/",
   authenticateUser,
   authorizeRoles(ROLES.STUDENT),
-  profileController,
+  placeOrderController
 );
 
 export default router;

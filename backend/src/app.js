@@ -1,9 +1,11 @@
-import authRoutes from "./routes/auth.routes.js";
-import menuRoutes from "./routes/menu.routes.js";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+
+import authRoutes from "./routes/auth.routes.js";
+import menuRoutes from "./routes/menu.routes.js";
+import orderRoutes from "./routes/order.routes.js";
 
 const app = express();
 
@@ -36,14 +38,21 @@ app.get("/health", (req, res) => {
     message: "CampusBite Backend Running",
   });
 });
-// ==========================
-// Menu Routes
-// ==========================
-app.use("/api/menu", menuRoutes);
+
 // ==========================
 // Authentication Routes
 // ==========================
 app.use("/api/auth", authRoutes);
+
+// ==========================
+// Menu Routes
+// ==========================
+app.use("/api/menu", menuRoutes);
+
+// ==========================
+// Order Routes
+// ==========================
+app.use("/api/orders", orderRoutes);
 
 // ==========================
 // 404 Handler
@@ -56,3 +65,4 @@ app.use((req, res) => {
 });
 
 export default app;
+
