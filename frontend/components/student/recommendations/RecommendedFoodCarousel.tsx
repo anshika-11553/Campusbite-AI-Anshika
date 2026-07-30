@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { SafeImage } from '@/components/ui/SafeImage';
+import { getFoodImageByName } from '@/constants/FoodImageMap';
 import { RecommendedFoodItem } from '@/services/recommendations/recommendationEngine';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -101,7 +102,7 @@ export const RecommendedFoodCarousel: React.FC<RecommendedFoodCarouselProps> = (
               {/* Image & Recommendation Badge */}
               <div className="relative w-full h-36 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
                 <SafeImage
-                  src={food.imageUrl}
+                  src={getFoodImageByName(food.name)}
                   alt={food.name}
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-300"

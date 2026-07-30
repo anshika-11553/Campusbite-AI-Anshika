@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { SafeImage } from '@/components/ui/SafeImage';
+import { getFoodImageByName } from '@/constants/FoodImageMap';
 import { MenuItem } from '@/types/student';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -18,13 +19,14 @@ const DEFAULT_FALLBACK_IMAGE = '/images/menu/default-food.jpg';
 
 export const MenuItemCard: React.FC<MenuItemCardProps> = React.memo(({ item, onAddToCart, onToggleFavorite }) => {
   const [quantity, setQuantity] = useState<number>(1);
+  const resolvedImg = getFoodImageByName(item.name);
 
   return (
     <Card className="p-0 flex flex-col justify-between hover:shadow-xl transition-all duration-300 group border-slate-200/80 hover:-translate-y-1 bg-white relative overflow-hidden rounded-2xl">
       {/* Image Banner Container */}
       <div className="relative w-full h-48 overflow-hidden bg-slate-100">
         <SafeImage
-          src={item.imageUrl || DEFAULT_FALLBACK_IMAGE}
+          src={resolvedImg}
           fallbackSrc={DEFAULT_FALLBACK_IMAGE}
           alt={item.name}
           fill

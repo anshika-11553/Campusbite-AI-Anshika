@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { SafeImage } from '@/components/ui/SafeImage';
+import { getFoodImageByName } from '@/constants/FoodImageMap';
 import { MenuItem } from '@/types/student';
 import { recommendationService } from '@/services/recommendations/recommendationService';
 import { Card } from '@/components/ui/Card';
@@ -47,7 +48,7 @@ export const CompleteYourMealWidget: React.FC<CompleteYourMealProps> = ({ allIte
               <div className="flex items-center gap-2 min-w-0">
 
                 <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-slate-700">
-                  <SafeImage src={item.imageUrl} alt={item.name} fill className="object-cover" />
+                  <SafeImage src={getFoodImageByName(item.name)} alt={item.name} fill className="object-cover" />
                 </div>
                 <div className="min-w-0">
                   <h5 className="font-extrabold text-xs text-white truncate">{item.name}</h5>
