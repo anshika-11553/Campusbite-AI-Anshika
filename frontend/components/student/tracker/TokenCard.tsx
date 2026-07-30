@@ -5,15 +5,14 @@ import { StudentOrder } from '@/types/student';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { QrCode, Clock, CheckCircle2, ChefHat, PackageCheck, Flame, Users, Store, ArrowRight, UserCheck } from 'lucide-react';
+import { Clock, CheckCircle2, ChefHat, PackageCheck, Flame, Users, Store, ArrowRight, UserCheck } from 'lucide-react';
 
 interface TokenCardProps {
   order: StudentOrder;
-  onOpenQRModal: () => void;
   onConfirmCollection?: (orderId: string) => void;
 }
 
-export const TokenCard: React.FC<TokenCardProps> = ({ order, onOpenQRModal, onConfirmCollection }) => {
+export const TokenCard: React.FC<TokenCardProps> = ({ order, onConfirmCollection }) => {
   const [countdownMinutes, setCountdownMinutes] = useState<number>(order.estimatedPreparationTimeMinutes || 8);
   const [countdownSeconds, setCountdownSeconds] = useState<number>(0);
 
@@ -32,12 +31,12 @@ export const TokenCard: React.FC<TokenCardProps> = ({ order, onOpenQRModal, onCo
   }, [countdownMinutes]);
 
   const timelineSteps = [
-    { key: 'PENDING', label: 'Pending', icon: <Flame className="h-4 w-4" />, color: 'bg-amber-400 text-slate-900', border: 'border-amber-400' },
-    { key: 'ACCEPTED', label: 'Accepted', icon: <CheckCircle2 className="h-4 w-4" />, color: 'bg-blue-500 text-white', border: 'border-blue-500' },
-    { key: 'SENT_TO_KITCHEN', label: 'Sent to Kitchen', icon: <Store className="h-4 w-4" />, color: 'bg-purple-500 text-white', border: 'border-purple-500' },
-    { key: 'PREPARING', label: 'Preparing', icon: <ChefHat className="h-4 w-4" />, color: 'bg-orange-500 text-white', border: 'border-orange-500' },
-    { key: 'READY', label: 'Ready for Pickup', icon: <PackageCheck className="h-4 w-4" />, color: 'bg-emerald-500 text-white', border: 'border-emerald-500' },
-    { key: 'COLLECTED', label: 'Collected', icon: <CheckCircle2 className="h-4 w-4" />, color: 'bg-slate-700 text-white', border: 'border-slate-700' },
+    { key: 'PENDING', label: 'Pending', icon: <Flame className="h-4 w-4" />, color: 'bg-amber-400 text-slate-900' },
+    { key: 'ACCEPTED', label: 'Accepted', icon: <CheckCircle2 className="h-4 w-4" />, color: 'bg-blue-500 text-white' },
+    { key: 'SENT_TO_KITCHEN', label: 'Sent to Kitchen', icon: <Store className="h-4 w-4" />, color: 'bg-purple-500 text-white' },
+    { key: 'PREPARING', label: 'Preparing', icon: <ChefHat className="h-4 w-4" />, color: 'bg-orange-500 text-white' },
+    { key: 'READY', label: 'Ready for Pickup', icon: <PackageCheck className="h-4 w-4" />, color: 'bg-emerald-500 text-white' },
+    { key: 'COLLECTED', label: 'Collected', icon: <CheckCircle2 className="h-4 w-4" />, color: 'bg-slate-700 text-white' },
   ];
 
   const getStepIndex = (st: string) => {
@@ -56,7 +55,7 @@ export const TokenCard: React.FC<TokenCardProps> = ({ order, onOpenQRModal, onCo
 
   return (
     <Card className="p-0 border-2 border-emerald-600/30 shadow-xl bg-white rounded-3xl overflow-hidden relative">
-      {/* Top Banner Shimmer Accent */}
+      {/* Top Banner Accent */}
       <div className="bg-gradient-to-r from-[#054A36] via-emerald-800 to-[#054A36] text-white p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 relative">
         <div className="flex items-center gap-4">
           {/* Prominent Large Token Box */}
@@ -84,23 +83,14 @@ export const TokenCard: React.FC<TokenCardProps> = ({ order, onOpenQRModal, onCo
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto justify-center sm:justify-end">
-          <Button
-            variant="secondary"
-            onClick={onOpenQRModal}
-            leftIcon={<QrCode className="h-4 w-4 text-[#054A36]" />}
-            className="bg-white text-[#054A36] font-bold shadow-md hover:bg-slate-100"
-          >
-            Show Pickup QR
-          </Button>
-
           {order.status === 'READY' && onConfirmCollection && (
             <Button
               variant="primary"
               onClick={() => onConfirmCollection(order.id)}
               rightIcon={<ArrowRight className="h-4 w-4" />}
-              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold shadow-md animate-bounce"
+              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold shadow-md animate-bounce py-3"
             >
-              I Have Collected
+              I Have Collected Order
             </Button>
           )}
         </div>

@@ -2,10 +2,12 @@ import { Category, PickupSlot, PaymentMethod, OrderStatus } from '@/types/studen
 
 export const FOOD_CATEGORIES: Category[] = [
   { id: 'all', name: 'All Items' },
-  { id: 'snacks', name: 'Quick Snacks' },
-  { id: 'beverages', name: 'Beverages' },
-  { id: 'meals', name: 'Full Meals' },
-  { id: 'desserts', name: 'Desserts' },
+  { id: 'breakfast', name: 'Breakfast 🍳' },
+  { id: 'main_course', name: 'Main Course 🍛' },
+  { id: 'fast_food', name: 'Fast Food 🍔' },
+  { id: 'snacks', name: 'Snacks 🥪' },
+  { id: 'beverages', name: 'Beverages 🥤' },
+  { id: 'desserts', name: 'Desserts 🍨' },
 ];
 
 export const PICKUP_SLOTS: PickupSlot[] = [

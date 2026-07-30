@@ -9,9 +9,15 @@ export interface MenuItem {
   preparationTimeMinutes: number;
   isVegetarian: boolean;
   rating?: number;
+  calories?: string;
+  protein?: string;
   isTrending?: boolean;
   isSpecial?: boolean;
   isFavorite?: boolean;
+  isNew?: boolean;
+  isPopular?: boolean;
+  isHealthy?: boolean;
+  isQuick?: boolean;
   tags?: string[];
 }
 
@@ -60,7 +66,7 @@ export interface QueueStatus {
   orderId: string;
   orderNumber: string;
   tokenNumber?: string;
-  currentStep: number; // 1: Pending, 2: Accepted, 3: Sent to Kitchen, 4: Preparing, 5: Ready, 6: Collected
+  currentStep: number;
   totalSteps: number;
   statusText: string;
   estimatedWaitMinutes: number;
@@ -84,11 +90,14 @@ export interface Category {
 
 export interface StudentStats {
   activeOrders: number;
+  totalOrders: number;
   ordersThisMonth: number;
   moneySavedInINR: number;
   waitTimeSavedMinutes: number;
   rewardPoints: number;
   walletBalanceInINR: number;
+  favoriteCategory: string;
+  favoriteVendor: string;
 }
 
 export interface CanteenNotification {

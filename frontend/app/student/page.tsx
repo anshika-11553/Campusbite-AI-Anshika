@@ -16,13 +16,14 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { featureFlags } from '@/config/features';
 import { useOrderWorkflow } from '@/context/OrderWorkflowContext';
 
-import { WelcomeHeader } from '@/components/student/common/WelcomeHeader';
+import { HeroSection } from '@/components/student/common/HeroSection';
 import { StatsOverview } from '@/components/student/common/StatsOverview';
 import { SpecialsBanner } from '@/components/student/common/SpecialsBanner';
+import { RecommendationCarousel } from '@/components/student/common/RecommendationCarousel';
 import { NotificationsDrawer } from '@/components/student/common/NotificationsDrawer';
 import { AnalyticsWidget } from '@/components/student/common/AnalyticsWidget';
 
-import { MenuFilters } from '@/components/student/menu/MenuFilters';
+import { MenuFilters, FoodTypeFilter, SortOption } from '@/components/student/menu/MenuFilters';
 import { MenuGrid } from '@/components/student/menu/MenuGrid';
 import { TokenCard } from '@/components/student/tracker/TokenCard';
 import { OrderHistoryList } from '@/components/student/orders/OrderHistoryList';
@@ -37,14 +38,9 @@ import { useToast } from '@/hooks/useToast';
 import { Utensils, History, Clock, PieChart, Sparkles } from 'lucide-react';
 import { analytics } from '@/services/analytics';
 
-// Lazy Load Heavy Modals
+// Lazy Load Checkout Modal
 const CheckoutModal = dynamic(
   () => import('@/components/student/cart/CheckoutModal').then((mod) => mod.CheckoutModal),
-  { ssr: false }
-);
-
-const QRPickupModal = dynamic(
-  () => import('@/components/student/tracker/QRPickupModal').then((mod) => mod.QRPickupModal),
   { ssr: false }
 );
 
@@ -66,18 +62,19 @@ export default function StudentDashboardPage() {
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(true);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  // Filters State
+  // Advanced Filters State
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [isVegOnly, setIsVegOnly] = useState<boolean>(false);
+  const [foodType, setFoodType] = useState<FoodTypeFilter>('all');
   const [isFavoritesOnly, setIsFavoritesOnly] = useState<boolean>(false);
+  const [sortOption, setSortOption] = useState<SortOption>('default');
+  const [quickFilter, setQuickFilter] = useState<string | null>(null);
 
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
   // Modal State
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
   const [checkoutSlot, setCheckoutSlot] = useState<string>('Instant Pickup (10-15 mins)');
-  const [isQRModalOpen, setIsQRModalOpen] = useState<boolean>(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
 
   const activeOrder = getActiveStudentOrder();
@@ -121,25 +118,61 @@ export default function StudentDashboardPage() {
     };
   }, [loadDashboardData]);
 
-  // Special Item for Banner
+  // Special Item & Carousels
   const specialItem = useMemo(() => {
     return menuItems.find((i) => i.isSpecial) || menuItems[0] || null;
   }, [menuItems]);
 
-  // Filtered Menu Items
+  const recommendedItems = useMemo(() => {
+    return menuItems.filter((i) => i.rating! >= 4.8 || i.isPopular);
+  }, [menuItems]);
+
+  const trendingItems = useMemo(() => {
+    return menuItems.filter((i) => i.isTrending);
+  }, [menuItems]);
+
+  // Multi-Criteria Filtered & Sorted Menu Items
   const filteredMenuItems = useMemo(() => {
-    return menuItems.filter((item) => {
+    const result = menuItems.filter((item) => {
       const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
       const matchesSearch =
         !debouncedSearchQuery ||
         item.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
         item.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
-      const matchesVeg = !isVegOnly || item.isVegetarian;
+
+      const matchesFoodType =
+        foodType === 'all'
+          ? true
+          : foodType === 'veg'
+          ? item.isVegetarian
+          : !item.isVegetarian;
+
       const matchesFavorite = !isFavoritesOnly || item.isFavorite;
 
-      return matchesCategory && matchesSearch && matchesVeg && matchesFavorite;
+      // Quick Filters
+      let matchesQuick = true;
+      if (quickFilter === 'popular') matchesQuick = !!item.isPopular;
+      if (quickFilter === 'new') matchesQuick = !!item.isNew;
+      if (quickFilter === 'budget') matchesQuick = item.priceInINR <= 100;
+      if (quickFilter === 'healthy') matchesQuick = !!item.isHealthy;
+      if (quickFilter === 'quick') matchesQuick = item.preparationTimeMinutes <= 10;
+
+      return matchesCategory && matchesSearch && matchesFoodType && matchesFavorite && matchesQuick;
     });
-  }, [menuItems, selectedCategory, debouncedSearchQuery, isVegOnly, isFavoritesOnly]);
+
+    // Sorting
+    if (sortOption === 'price_low') {
+      result.sort((a, b) => a.priceInINR - b.priceInINR);
+    } else if (sortOption === 'price_high') {
+      result.sort((a, b) => b.priceInINR - a.priceInINR);
+    } else if (sortOption === 'rating') {
+      result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else if (sortOption === 'prep_time') {
+      result.sort((a, b) => a.preparationTimeMinutes - b.preparationTimeMinutes);
+    }
+
+    return result;
+  }, [menuItems, selectedCategory, debouncedSearchQuery, foodType, isFavoritesOnly, quickFilter, sortOption]);
 
   const handleToggleFavorite = (itemId: string) => {
     setMenuItems((prev) =>
@@ -158,6 +191,10 @@ export default function StudentDashboardPage() {
     studentApiService.toggleFavoriteItem(itemId);
   };
 
+  const handleQuickFilterToggle = (filterId: string) => {
+    setQuickFilter((prev) => (prev === filterId ? null : filterId));
+  };
+
   const handleProceedToCheckout = (slot: string) => {
     setCheckoutSlot(slot);
     setIsCheckoutOpen(true);
@@ -172,7 +209,7 @@ export default function StudentDashboardPage() {
     if (target) {
       placeOrder({
         studentId: target.studentId,
-        studentName: target.studentName || 'Student',
+        studentName: target.studentName || 'Anshika Sharma',
         vendorName: target.vendorName,
         items: target.items,
         totalAmountInINR: target.totalAmountInINR,
@@ -194,19 +231,26 @@ export default function StudentDashboardPage() {
   return (
     <DashboardLayout role="student" title="Campus Canteen Portal">
       <div className="flex flex-col gap-6">
-        {/* Welcome Header Banner */}
-        <WelcomeHeader
+        {/* Premium Hero Section */}
+        <HeroSection
+          activeOrder={activeOrder}
+          stats={stats}
           unreadNotificationCount={unreadCount}
           onOpenNotifications={() => setIsNotificationsOpen(true)}
           onOpenCart={() => setIsCartOpen(true)}
           itemCount={itemCount}
+          onExploreMenu={() => setActiveTab('menu')}
         />
 
-        {/* Quick Stats Grid */}
+        {/* Enhanced 8-Metric Statistics Grid */}
         <StatsOverview stats={stats} />
 
         {/* Today's Special Banner */}
         <SpecialsBanner specialItem={specialItem} onAddToCart={addItem} />
+
+        {/* Horizontal Recommendation Carousels */}
+        <RecommendationCarousel title="Recommended For You" items={recommendedItems} onAddToCart={addItem} />
+        <RecommendationCarousel title="Trending Today" items={trendingItems} onAddToCart={addItem} />
 
         {/* API Error Display */}
         {apiError && <ApiErrorDisplay message={apiError} onRetry={loadDashboardData} />}
@@ -225,17 +269,17 @@ export default function StudentDashboardPage() {
               setActiveTab('menu');
               analytics.trackCategoryFilter('menu-tab');
             }}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 shrink-0 ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-200 shrink-0 ${
               activeTab === 'menu'
                 ? 'bg-[#054A36] text-white shadow-sm scale-[1.02]'
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
             <Utensils className="h-4 w-4" />
-            <span>Menu Explorer</span>
+            <span>35+ Food Catalogue</span>
           </button>
 
-          {/* Tab 2: Live Token Queue */}
+          {/* Tab 2: Live Token Tracker */}
           {featureFlags.enableQueueTracking && (
             <button
               role="tab"
@@ -244,7 +288,7 @@ export default function StudentDashboardPage() {
                 setActiveTab('queue');
                 analytics.trackCategoryFilter('queue-tab');
               }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 shrink-0 relative ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-200 shrink-0 relative ${
                 activeTab === 'queue'
                   ? 'bg-[#054A36] text-white shadow-sm scale-[1.02]'
                   : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -267,7 +311,7 @@ export default function StudentDashboardPage() {
                 setActiveTab('orders');
                 analytics.trackCategoryFilter('orders-tab');
               }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 shrink-0 ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-200 shrink-0 ${
                 activeTab === 'orders'
                   ? 'bg-[#054A36] text-white shadow-sm scale-[1.02]'
                   : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -286,7 +330,7 @@ export default function StudentDashboardPage() {
               setActiveTab('analytics');
               analytics.trackCategoryFilter('analytics-tab');
             }}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 shrink-0 ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-200 shrink-0 ${
               activeTab === 'analytics'
                 ? 'bg-[#054A36] text-white shadow-sm scale-[1.02]'
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -297,7 +341,7 @@ export default function StudentDashboardPage() {
           </button>
         </div>
 
-        {/* Tab 1: Menu Explorer */}
+        {/* Tab 1: 35+ Food Catalogue & Advanced Filters */}
         {activeTab === 'menu' && (
           <div className="space-y-5 transition-all duration-300 animate-in fade-in slide-in-from-top-1">
             <MenuFilters
@@ -306,10 +350,14 @@ export default function StudentDashboardPage() {
               onSelectCategory={setSelectedCategory}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
-              isVegOnly={isVegOnly}
-              onVegOnlyToggle={setIsVegOnly}
+              foodType={foodType}
+              onFoodTypeChange={setFoodType}
               isFavoritesOnly={isFavoritesOnly}
               onFavoritesOnlyToggle={setIsFavoritesOnly}
+              sortOption={sortOption}
+              onSortChange={setSortOption}
+              quickFilter={quickFilter}
+              onQuickFilterToggle={handleQuickFilterToggle}
             />
 
             {isLoadingMenu ? (
@@ -324,13 +372,12 @@ export default function StudentDashboardPage() {
           </div>
         )}
 
-        {/* Tab 2: Live Token Queue Tracker */}
+        {/* Tab 2: Live Token Tracker */}
         {activeTab === 'queue' && featureFlags.enableQueueTracking && (
           <div className="space-y-5 transition-all duration-300 animate-in fade-in slide-in-from-top-1">
             {activeOrder ? (
               <TokenCard
                 order={activeOrder}
-                onOpenQRModal={() => setIsQRModalOpen(true)}
                 onConfirmCollection={(id) => updateOrderStatus(id, 'COLLECTED')}
               />
             ) : (
@@ -338,7 +385,7 @@ export default function StudentDashboardPage() {
                 icon={<Clock className="h-8 w-8 text-slate-400" />}
                 title="No Active Queue Tokens"
                 description="You currently have no active canteen pre-orders in preparation."
-                actionLabel="Browse Menu Explorer"
+                actionLabel="Browse 35+ Food Catalogue"
                 onAction={() => setActiveTab('menu')}
               />
             )}
@@ -387,16 +434,6 @@ export default function StudentDashboardPage() {
           onClose={() => setIsCheckoutOpen(false)}
           selectedSlot={checkoutSlot}
           onOrderSuccess={handleOrderSuccess}
-        />
-      )}
-
-      {/* Express QR Pickup Pass Modal */}
-      {featureFlags.enableQRCode && isQRModalOpen && activeOrder && (
-        <QRPickupModal
-          isOpen={isQRModalOpen}
-          onClose={() => setIsQRModalOpen(false)}
-          orderNumber={activeOrder.orderNumber}
-          qrCodeUrl={activeOrder.qrCodeUrl}
         />
       )}
     </DashboardLayout>

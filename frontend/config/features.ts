@@ -1,13 +1,6 @@
-export interface FeatureFlags {
-  enableCheckout: boolean;
-  enableQueueTracking: boolean;
-  enableQRCode: boolean;
-  enableOrderHistory: boolean;
-}
-
-export const featureFlags: FeatureFlags = {
+export const featureFlags = {
   enableCheckout: true,
   enableQueueTracking: true,
-  enableQRCode: true,
+  enableQRCode: false, // Disabled per QR pickup removal directive
   enableOrderHistory: true,
 };
