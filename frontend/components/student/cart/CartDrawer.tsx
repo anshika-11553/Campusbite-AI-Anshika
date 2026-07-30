@@ -9,6 +9,8 @@ import { PICKUP_SLOTS } from '@/constants/menu';
 import { X, ShoppingBag, Plus, Minus, Trash2, ArrowRight, Clock, Tag, CheckCircle2 } from 'lucide-react';
 import { EmptyState } from '../common/EmptyState';
 import { useToast } from '@/hooks/useToast';
+import { CompleteYourMealWidget } from '../recommendations/CompleteYourMealDrawer';
+import { SAMPLE_MENU_ITEMS } from '@/services/recommendations/recommendationEngine';
 
 interface CartDrawerProps {
   onProceedToCheckout: (selectedSlot: string, couponCode?: string) => void;
@@ -112,6 +114,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
                   </Card>
                 ))}
               </div>
+
+              {/* 🍽 Complete Your Meal Smart Cart Complementary Widget */}
+              <CompleteYourMealWidget allItems={SAMPLE_MENU_ITEMS} />
 
               {/* Coupon Code Section */}
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
