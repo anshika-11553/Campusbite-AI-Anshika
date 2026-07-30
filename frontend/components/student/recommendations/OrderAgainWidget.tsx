@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { getFoodImageByName } from '@/lib/FoodImageMap';
 import { StudentOrder } from '@/types/student';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -27,9 +28,7 @@ export const OrderAgainWidget: React.FC<OrderAgainWidgetProps> = ({ lastOrder })
         description: 'Reordered item from previous meal',
         priceInINR: orderItem.priceInINR,
         category: 'main_course',
-        imageUrl: orderItem.itemName.includes('Pizza')
-          ? '/images/food/paneer_masala.jpg'
-          : '/images/menu/default-food.jpg',
+        imageUrl: getFoodImageByName(orderItem.itemName),
         isAvailable: true,
         preparationTimeMinutes: 10,
         isPopular: true,
