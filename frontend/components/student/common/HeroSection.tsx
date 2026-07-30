@@ -15,6 +15,7 @@ interface HeroSectionProps {
   onOpenCart: () => void;
   itemCount: number;
   onExploreMenu: () => void;
+  onOpenProfile?: () => void;
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({
@@ -25,6 +26,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onOpenCart,
   itemCount,
   onExploreMenu,
+  onOpenProfile,
 }) => {
   const { user } = useAuth();
 
@@ -46,16 +48,21 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       {/* Header Top Row */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white shrink-0 shadow-inner">
-            <UserIcon className="h-7 w-7" />
-          </div>
+          <button
+            type="button"
+            onClick={onOpenProfile}
+            className="w-14 h-14 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-white shrink-0 shadow-inner transition-all hover:scale-105 group focus:outline-none"
+            aria-label="Open profile modal"
+          >
+            <UserIcon className="h-7 w-7 text-emerald-200 group-hover:text-white transition-colors" />
+          </button>
 
           <div className="space-y-1">
             <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 text-xs font-bold border border-emerald-400/30">
               <Sparkles className="h-3.5 w-3.5" />
               <span>CampusBite AI Canteen Portal</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight cursor-pointer hover:text-emerald-200 transition-colors" onClick={onOpenProfile}>
               {getGreeting()}, {studentName}! 👋
             </h2>
             <p className="text-xs sm:text-sm text-emerald-100/80 max-w-lg">
@@ -126,26 +133,32 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         )}
 
         {/* Reward Points */}
-        <div className="p-3.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl flex items-center gap-3">
+        <div
+          onClick={onOpenProfile}
+          className="p-3.5 bg-white/10 hover:bg-white/15 cursor-pointer backdrop-blur-md border border-white/20 rounded-2xl flex items-center gap-3 transition-colors"
+        >
           <div className="p-2.5 rounded-xl bg-amber-400/20 text-amber-300 shrink-0">
             <Award className="h-5 w-5" />
           </div>
           <div>
             <span className="text-[10px] uppercase font-bold text-emerald-200">Reward Points</span>
             <h4 className="font-extrabold text-lg text-white">{stats?.rewardPoints || 340} PTS</h4>
-            <p className="text-[10px] text-emerald-100/70">Redeem on next pre-order</p>
+            <p className="text-[10px] text-emerald-100/70">Click to view rewards</p>
           </div>
         </div>
 
         {/* Wallet Balance */}
-        <div className="p-3.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl flex items-center gap-3">
+        <div
+          onClick={onOpenProfile}
+          className="p-3.5 bg-white/10 hover:bg-white/15 cursor-pointer backdrop-blur-md border border-white/20 rounded-2xl flex items-center gap-3 transition-colors"
+        >
           <div className="p-2.5 rounded-xl bg-emerald-400/20 text-emerald-300 shrink-0">
             <Wallet className="h-5 w-5" />
           </div>
           <div>
             <span className="text-[10px] uppercase font-bold text-emerald-200">Canteen Wallet</span>
             <h4 className="font-extrabold text-lg text-white">{formatCurrency(stats?.walletBalanceInINR || 650)}</h4>
-            <p className="text-[10px] text-emerald-100/70">Available Balance</p>
+            <p className="text-[10px] text-emerald-100/70">Click to top up</p>
           </div>
         </div>
       </div>

@@ -22,6 +22,7 @@ import { SpecialsBanner } from '@/components/student/common/SpecialsBanner';
 import { RecommendationCarousel } from '@/components/student/common/RecommendationCarousel';
 import { NotificationsDrawer } from '@/components/student/common/NotificationsDrawer';
 import { AnalyticsWidget } from '@/components/student/common/AnalyticsWidget';
+import { StudentProfileModal } from '@/components/student/profile/StudentProfileModal';
 
 import { MenuFilters, FoodTypeFilter, SortOption } from '@/components/student/menu/MenuFilters';
 import { MenuGrid } from '@/components/student/menu/MenuGrid';
@@ -76,6 +77,7 @@ export default function StudentDashboardPage() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
   const [checkoutSlot, setCheckoutSlot] = useState<string>('Instant Pickup (10-15 mins)');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
+  const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
 
   const activeOrder = getActiveStudentOrder();
 
@@ -240,6 +242,7 @@ export default function StudentDashboardPage() {
           onOpenCart={() => setIsCartOpen(true)}
           itemCount={itemCount}
           onExploreMenu={() => setActiveTab('menu')}
+          onOpenProfile={() => setIsProfileOpen(true)}
         />
 
         {/* Enhanced 8-Metric Statistics Grid */}
@@ -436,6 +439,12 @@ export default function StudentDashboardPage() {
           onOrderSuccess={handleOrderSuccess}
         />
       )}
+      {/* Student Profile Modal */}
+      <StudentProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        stats={stats}
+      />
     </DashboardLayout>
   );
 }
