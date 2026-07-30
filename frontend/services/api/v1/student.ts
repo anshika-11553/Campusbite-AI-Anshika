@@ -8,6 +8,9 @@ import {
   PickupSlot,
   CartItem,
   PaymentMethod,
+  StudentStats,
+  CanteenNotification,
+  StudentAnalytics,
 } from '@/types/student';
 import { FOOD_CATEGORIES, PICKUP_SLOTS } from '@/constants/menu';
 
@@ -16,6 +19,7 @@ export interface PlaceOrderPayload {
   pickupSlot: string;
   paymentMethod: PaymentMethod;
   specialInstructions?: string;
+  couponCode?: string;
 }
 
 export interface IStudentApiService {
@@ -27,6 +31,12 @@ export interface IStudentApiService {
   getOrderHistory(): Promise<ApiResponse<StudentOrder[]>>;
   reorder(orderId: string): Promise<ApiResponse<StudentOrder>>;
   getPickupSlots(): Promise<ApiResponse<PickupSlot[]>>;
+  getStudentStats(): Promise<ApiResponse<StudentStats>>;
+  getRecommendedItems(): Promise<ApiResponse<MenuItem[]>>;
+  getTrendingItems(): Promise<ApiResponse<MenuItem[]>>;
+  getNotifications(): Promise<ApiResponse<CanteenNotification[]>>;
+  getStudentAnalytics(): Promise<ApiResponse<StudentAnalytics>>;
+  toggleFavoriteItem(itemId: string): Promise<ApiResponse<{ isFavorite: boolean }>>;
 }
 
 class StudentApiService implements IStudentApiService {
@@ -36,7 +46,6 @@ class StudentApiService implements IStudentApiService {
       const response = await apiClient.get<ApiResponse<MenuItem[]>>('/v1/student/menu');
       return response.data;
     } catch {
-      // Fallback adapter for Phase 2 UI demonstration before backend API deployment
       return {
         success: true,
         data: [
@@ -50,6 +59,10 @@ class StudentApiService implements IStudentApiService {
             preparationTimeMinutes: 15,
             isVegetarian: true,
             rating: 4.8,
+            isSpecial: true,
+            isTrending: true,
+            isFavorite: true,
+            tags: ['Chef Choice', 'Best Seller'],
           },
           {
             id: 'item-2',
@@ -61,6 +74,9 @@ class StudentApiService implements IStudentApiService {
             preparationTimeMinutes: 10,
             isVegetarian: true,
             rating: 4.6,
+            isTrending: true,
+            isFavorite: false,
+            tags: ['Quick Bite'],
           },
           {
             id: 'item-3',
@@ -72,6 +88,9 @@ class StudentApiService implements IStudentApiService {
             preparationTimeMinutes: 5,
             isVegetarian: true,
             rating: 4.9,
+            isTrending: true,
+            isFavorite: true,
+            tags: ['Popular Brew'],
           },
           {
             id: 'item-4',
@@ -83,6 +102,9 @@ class StudentApiService implements IStudentApiService {
             preparationTimeMinutes: 12,
             isVegetarian: false,
             rating: 4.7,
+            isTrending: true,
+            isFavorite: false,
+            tags: ['High Protein'],
           },
           {
             id: 'item-5',
@@ -94,6 +116,9 @@ class StudentApiService implements IStudentApiService {
             preparationTimeMinutes: 5,
             isVegetarian: true,
             rating: 4.5,
+            isSpecial: false,
+            isFavorite: true,
+            tags: ['Budget Friendly'],
           },
           {
             id: 'item-6',
@@ -105,6 +130,9 @@ class StudentApiService implements IStudentApiService {
             preparationTimeMinutes: 5,
             isVegetarian: true,
             rating: 4.9,
+            isSpecial: true,
+            isFavorite: false,
+            tags: ['Sweet Cravings'],
           },
         ],
       };
@@ -148,6 +176,7 @@ class StudentApiService implements IStudentApiService {
           qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=CB-8492-std-user-1',
           estimatedPreparationTimeMinutes: 8,
           createdAt: new Date().toISOString(),
+          queuePosition: 3,
         },
       };
     }
@@ -168,6 +197,7 @@ class StudentApiService implements IStudentApiService {
           totalSteps: 4,
           statusText: 'Kitchen is preparing your meal',
           estimatedWaitMinutes: 8,
+          queuePosition: 3,
         },
       };
     }
@@ -199,6 +229,7 @@ class StudentApiService implements IStudentApiService {
         qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=CB-NEW-${Date.now()}`,
         estimatedPreparationTimeMinutes: 12,
         createdAt: new Date().toISOString(),
+        queuePosition: 4,
       };
 
       return {
@@ -233,6 +264,7 @@ class StudentApiService implements IStudentApiService {
             paymentMethod: 'CANTEEN_CARD',
             estimatedPreparationTimeMinutes: 0,
             createdAt: new Date(Date.now() - 86400000).toISOString(),
+            rating: 5,
           },
           {
             id: 'ord-98',
@@ -246,6 +278,7 @@ class StudentApiService implements IStudentApiService {
             paymentMethod: 'UPI',
             estimatedPreparationTimeMinutes: 0,
             createdAt: new Date(Date.now() - 172800000).toISOString(),
+            rating: 4,
           },
         ],
       };
@@ -283,6 +316,134 @@ class StudentApiService implements IStudentApiService {
       return {
         success: true,
         data: PICKUP_SLOTS,
+      };
+    }
+  }
+
+  async getStudentStats(): Promise<ApiResponse<StudentStats>> {
+    try {
+      // TODO: Replace with backend API endpoint: GET /api/v1/student/stats
+      const response = await apiClient.get<ApiResponse<StudentStats>>('/v1/student/stats');
+      return response.data;
+    } catch {
+      return {
+        success: true,
+        data: {
+          activeOrders: 1,
+          ordersThisMonth: 14,
+          moneySavedInINR: 450,
+          waitTimeSavedMinutes: 85,
+          rewardPoints: 340,
+          walletBalanceInINR: 650,
+        },
+      };
+    }
+  }
+
+  async getRecommendedItems(): Promise<ApiResponse<MenuItem[]>> {
+    try {
+      // TODO: Replace with backend API endpoint: GET /api/v1/student/recommended
+      const response = await apiClient.get<ApiResponse<MenuItem[]>>('/v1/student/recommended');
+      return response.data;
+    } catch {
+      const all = (await this.getMenu()).data;
+      return {
+        success: true,
+        data: all.filter((i) => i.isSpecial || i.rating! >= 4.8),
+      };
+    }
+  }
+
+  async getTrendingItems(): Promise<ApiResponse<MenuItem[]>> {
+    try {
+      // TODO: Replace with backend API endpoint: GET /api/v1/student/trending
+      const response = await apiClient.get<ApiResponse<MenuItem[]>>('/v1/student/trending');
+      return response.data;
+    } catch {
+      const all = (await this.getMenu()).data;
+      return {
+        success: true,
+        data: all.filter((i) => i.isTrending),
+      };
+    }
+  }
+
+  async getNotifications(): Promise<ApiResponse<CanteenNotification[]>> {
+    try {
+      // TODO: Replace with backend API endpoint: GET /api/v1/student/notifications
+      const response = await apiClient.get<ApiResponse<CanteenNotification[]>>('/v1/student/notifications');
+      return response.data;
+    } catch {
+      return {
+        success: true,
+        data: [
+          {
+            id: 'notif-1',
+            title: 'Order CB-8492 Update',
+            message: 'Kitchen is currently preparing your Paneer Butter Masala Combo.',
+            timestamp: '5 mins ago',
+            type: 'order',
+            isRead: false,
+          },
+          {
+            id: 'notif-2',
+            title: 'Evening Snack Combo Offer!',
+            message: 'Get Cold Coffee + Sandwich at ₹110 only today.',
+            timestamp: '1 hour ago',
+            type: 'promo',
+            isRead: false,
+          },
+          {
+            id: 'notif-3',
+            title: 'Reward Points Earned',
+            message: 'You earned +20 points on your last completed order.',
+            timestamp: 'Yesterday',
+            type: 'system',
+            isRead: true,
+          },
+        ],
+      };
+    }
+  }
+
+  async getStudentAnalytics(): Promise<ApiResponse<StudentAnalytics>> {
+    try {
+      // TODO: Replace with backend API endpoint: GET /api/v1/student/analytics
+      const response = await apiClient.get<ApiResponse<StudentAnalytics>>('/v1/student/analytics');
+      return response.data;
+    } catch {
+      return {
+        success: true,
+        data: {
+          monthlySpending: [
+            { categoryName: 'Quick Snacks', amountInINR: 420, percentage: 35 },
+            { categoryName: 'Full Meals', amountInINR: 560, percentage: 46 },
+            { categoryName: 'Beverages', amountInINR: 230, percentage: 19 },
+          ],
+          mostOrderedCategory: 'Full Meals',
+          favoriteVendor: 'Main Campus Food Court',
+          weeklyActivity: [
+            { day: 'Mon', ordersCount: 2 },
+            { day: 'Tue', ordersCount: 3 },
+            { day: 'Wed', ordersCount: 1 },
+            { day: 'Thu', ordersCount: 4 },
+            { day: 'Fri', ordersCount: 3 },
+            { day: 'Sat', ordersCount: 1 },
+          ],
+        },
+      };
+    }
+  }
+
+  async toggleFavoriteItem(itemId: string): Promise<ApiResponse<{ isFavorite: boolean }>> {
+    try {
+      // TODO: Replace with backend API endpoint: POST /api/v1/student/favorites/:itemId
+      const response = await apiClient.post<ApiResponse<{ isFavorite: boolean }>>(`/v1/student/favorites/${itemId}`);
+      return response.data;
+    } catch {
+      return {
+        success: true,
+        data: { isFavorite: true },
       };
     }
   }

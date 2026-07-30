@@ -6,16 +6,35 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { formatCurrency } from '@/constants/currency';
 import { PICKUP_SLOTS } from '@/constants/menu';
-import { X, ShoppingBag, Plus, Minus, Trash2, ArrowRight, Clock } from 'lucide-react';
+import { X, ShoppingBag, Plus, Minus, Trash2, ArrowRight, Clock, Tag, CheckCircle2 } from 'lucide-react';
 import { EmptyState } from '../common/EmptyState';
+import { useToast } from '@/hooks/useToast';
 
 interface CartDrawerProps {
-  onProceedToCheckout: (selectedSlot: string) => void;
+  onProceedToCheckout: (selectedSlot: string, couponCode?: string) => void;
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) => {
   const { items, itemCount, totalAmountInINR, updateQuantity, removeItem, isCartOpen, setIsCartOpen } = useCart();
+  const { showToast } = useToast();
+
   const [selectedSlot, setSelectedSlot] = useState<string>(PICKUP_SLOTS[0].timeLabel);
+  const [couponCode, setCouponCode] = useState<string>('');
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [isCouponApplied, setIsCouponApplied] = useState<boolean>(false);
+
+  const handleApplyCoupon = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (couponCode.toUpperCase() === 'CAMPUS50') {
+      setDiscountAmount(50);
+      setIsCouponApplied(true);
+      showToast('Coupon CAMPUS50 applied! ₹50 OFF', 'success');
+    } else {
+      showToast('Invalid coupon code. Try CAMPUS50', 'error');
+    }
+  };
+
+  const finalTotal = Math.max(0, totalAmountInINR - discountAmount);
 
   if (!isCartOpen) return null;
 
@@ -94,6 +113,51 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
                 ))}
               </div>
 
+              {/* Coupon Code Section */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Tag className="h-3.5 w-3.5 text-amber-600" />
+                    Campus Coupon Code
+                  </span>
+                  <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-100 px-2 py-0.5 rounded">
+                    Use CAMPUS50
+                  </span>
+                </div>
+
+                {isCouponApplied ? (
+                  <div className="flex items-center justify-between text-xs text-emerald-700 font-bold bg-emerald-50 p-2 rounded-lg border border-emerald-200">
+                    <span className="flex items-center gap-1">
+                      <CheckCircle2 className="h-4 w-4" />
+                      CAMPUS50 (₹50 OFF Applied)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCouponApplied(false);
+                        setDiscountAmount(0);
+                      }}
+                      className="text-slate-400 hover:text-red-500"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleApplyCoupon} className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter promo code..."
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      className="flex-1 px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#054A36]"
+                    />
+                    <Button variant="secondary" size="sm" type="submit" className="text-xs px-3">
+                      Apply
+                    </Button>
+                  </form>
+                )}
+              </div>
+
               {/* Pickup Slot Selection */}
               <div className="flex flex-col gap-2 pt-2">
                 <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
@@ -118,26 +182,35 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
 
         {/* Footer Summary */}
         {items.length > 0 && (
-          <div className="p-4 sm:p-5 border-t border-slate-200 bg-slate-50 flex flex-col gap-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-600 font-medium">Subtotal</span>
-              <span className="font-bold text-slate-900">{formatCurrency(totalAmountInINR)}</span>
+          <div className="p-4 sm:p-5 border-t border-slate-200 bg-slate-50 flex flex-col gap-2">
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span>Subtotal</span>
+              <span className="font-semibold text-slate-900">{formatCurrency(totalAmountInINR)}</span>
             </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-600 font-medium">Convenience Fee</span>
+
+            {isCouponApplied && (
+              <div className="flex items-center justify-between text-xs text-emerald-700">
+                <span>Coupon Discount (CAMPUS50)</span>
+                <span className="font-bold">- {formatCurrency(discountAmount)}</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span>Convenience & Packaging Fee</span>
               <span className="font-semibold text-emerald-700">FREE</span>
             </div>
-            <div className="flex items-center justify-between text-base border-t border-slate-200 pt-2">
-              <span className="font-bold text-slate-900">Total Bill</span>
-              <span className="font-extrabold text-[#054A36] text-lg">{formatCurrency(totalAmountInINR)}</span>
+
+            <div className="flex items-center justify-between text-base border-t border-slate-200 pt-2 mt-1">
+              <span className="font-bold text-slate-900">Total Payable</span>
+              <span className="font-extrabold text-[#054A36] text-lg">{formatCurrency(finalTotal)}</span>
             </div>
 
             <Button
               variant="primary"
               size="lg"
-              onClick={() => onProceedToCheckout(selectedSlot)}
+              onClick={() => onProceedToCheckout(selectedSlot, isCouponApplied ? 'CAMPUS50' : undefined)}
               rightIcon={<ArrowRight className="h-4 w-4" />}
-              className="w-full mt-1 font-semibold text-base py-3"
+              className="w-full mt-1 font-semibold text-base py-3 bg-[#054A36]"
             >
               Proceed to Checkout
             </Button>

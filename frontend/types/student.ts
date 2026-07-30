@@ -9,6 +9,10 @@ export interface MenuItem {
   preparationTimeMinutes: number;
   isVegetarian: boolean;
   rating?: number;
+  isTrending?: boolean;
+  isSpecial?: boolean;
+  isFavorite?: boolean;
+  tags?: string[];
 }
 
 export interface CartItem {
@@ -40,6 +44,8 @@ export interface StudentOrder {
   qrCodeUrl?: string;
   estimatedPreparationTimeMinutes: number;
   createdAt: string;
+  queuePosition?: number;
+  rating?: number;
 }
 
 export interface QueueStatus {
@@ -49,6 +55,7 @@ export interface QueueStatus {
   totalSteps: number;
   statusText: string;
   estimatedWaitMinutes: number;
+  queuePosition?: number;
 }
 
 export interface PickupSlot {
@@ -63,4 +70,40 @@ export interface Category {
   id: string;
   name: string;
   iconName?: string;
+}
+
+export interface StudentStats {
+  activeOrders: number;
+  ordersThisMonth: number;
+  moneySavedInINR: number;
+  waitTimeSavedMinutes: number;
+  rewardPoints: number;
+  walletBalanceInINR: number;
+}
+
+export interface CanteenNotification {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  type: 'order' | 'promo' | 'system';
+  isRead: boolean;
+}
+
+export interface SpendingCategorySummary {
+  categoryName: string;
+  amountInINR: number;
+  percentage: number;
+}
+
+export interface WeeklyActivity {
+  day: string;
+  ordersCount: number;
+}
+
+export interface StudentAnalytics {
+  monthlySpending: SpendingCategorySummary[];
+  mostOrderedCategory: string;
+  favoriteVendor: string;
+  weeklyActivity: WeeklyActivity[];
 }
