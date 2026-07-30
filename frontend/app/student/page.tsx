@@ -133,6 +133,18 @@ export default function StudentDashboardPage() {
     return menuItems.filter((i) => i.isTrending);
   }, [menuItems]);
 
+  const bestSellers = useMemo(() => {
+    return menuItems.filter((i) => i.isPopular);
+  }, [menuItems]);
+
+  const chefsChoice = useMemo(() => {
+    return menuItems.filter((i) => i.isSpecial);
+  }, [menuItems]);
+
+  const campusSpecials = useMemo(() => {
+    return menuItems.filter((i) => i.isHealthy || i.isQuick);
+  }, [menuItems]);
+
   // Multi-Criteria Filtered & Sorted Menu Items
   const filteredMenuItems = useMemo(() => {
     const result = menuItems.filter((item) => {
@@ -254,6 +266,9 @@ export default function StudentDashboardPage() {
         {/* Horizontal Recommendation Carousels */}
         <RecommendationCarousel title="Recommended For You" items={recommendedItems} onAddToCart={addItem} />
         <RecommendationCarousel title="Trending Today" items={trendingItems} onAddToCart={addItem} />
+        <RecommendationCarousel title="Best Sellers ⭐" items={bestSellers} onAddToCart={addItem} />
+        <RecommendationCarousel title="Chef's Choice 👨‍🍳" items={chefsChoice} onAddToCart={addItem} />
+        <RecommendationCarousel title="Campus Quick Specials ⚡" items={campusSpecials} onAddToCart={addItem} />
 
         {/* API Error Display */}
         {apiError && <ApiErrorDisplay message={apiError} onRetry={loadDashboardData} />}
