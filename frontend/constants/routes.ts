@@ -3,6 +3,7 @@ import { UserRole } from '@/types/auth';
 export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
+  SIGNUP: '/signup',
   STUDENT: '/student',
   VENDOR: '/vendor',
   ADMIN: '/admin',
