@@ -2,10 +2,15 @@
 
 import React from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Card } from '@/components/ui/Card';
+import { useOrderWorkflow } from '@/context/OrderWorkflowContext';
+import { KDSOrderCard } from '@/components/headChef/KDSOrderCard';
+import { EmptyState } from '@/components/student/common/EmptyState';
 import { CheckCircle } from 'lucide-react';
 
 export default function ChefReadyPage() {
+  const { orders, updateOrderStatus } = useOrderWorkflow();
+  const readyOrders = orders.filter((o) => o.status === 'READY');
+
   return (
     <DashboardLayout role="chief" title="Passed & Ready Dishes">
       <div className="space-y-6">
@@ -13,29 +18,35 @@ export default function ChefReadyPage() {
           <div>
             <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
               <CheckCircle className="h-6 w-6 text-emerald-600" />
-              Passed Quality Audit
+              Passed Quality Audit & Dispatched
             </h2>
             <p className="text-xs text-slate-500">Dishes ready to serve to students</p>
           </div>
+          <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-extrabold rounded-full border border-emerald-300">
+            {readyOrders.length} Ready for Pickup
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[
-            { id: '#TK-405', dish: 'Veg Thali Deluxe', passedBy: 'Head Chef Vikrant', time: '1 min ago' },
-            { id: '#TK-406', dish: 'Paneer Masala + Rice', passedBy: 'Head Chef Vikrant', time: '3 min ago' },
-          ].map((item, i) => (
-            <Card key={i} className="p-5 border-emerald-200 bg-emerald-50/20 flex items-center justify-between">
-              <div>
-                <span className="font-extrabold text-emerald-800 text-lg">{item.id}</span>
-                <p className="font-bold text-slate-900 text-sm mt-0.5">{item.dish}</p>
-                <p className="text-xs text-slate-500 mt-1">Verified: {item.passedBy}</p>
-              </div>
-              <span className="px-3 py-1 bg-emerald-600 text-white text-xs font-bold rounded-full">
-                Dispatched
-              </span>
-            </Card>
-          ))}
-        </div>
+        {readyOrders.length === 0 ? (
+          <EmptyState
+            icon={<CheckCircle className="h-8 w-8 text-slate-400" />}
+            title="Pass Counter Clear"
+            description="There are currently no completed dishes waiting at the pass."
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {readyOrders.map((order) => (
+              <KDSOrderCard
+                key={order.id}
+                order={order}
+                onStartPreparing={(id) => updateOrderStatus(id, 'PREPARING')}
+                onPausePreparation={(id) => updateOrderStatus(id, 'PREPARING')}
+                onResumePreparation={(id) => updateOrderStatus(id, 'PREPARING')}
+                onMarkReady={(id) => updateOrderStatus(id, 'COLLECTED')}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

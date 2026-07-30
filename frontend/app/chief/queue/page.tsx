@@ -2,11 +2,15 @@
 
 import React from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Card } from '@/components/ui/Card';
-import { ChefHat, Flame } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { useOrderWorkflow } from '@/context/OrderWorkflowContext';
+import { KDSOrderCard } from '@/components/headChef/KDSOrderCard';
+import { EmptyState } from '@/components/student/common/EmptyState';
+import { ChefHat } from 'lucide-react';
 
 export default function ChefQueuePage() {
+  const { orders, updateOrderStatus } = useOrderWorkflow();
+  const kitchenOrders = orders.filter((o) => o.status === 'SENT_TO_KITCHEN' || o.status === 'PREPARING');
+
   return (
     <DashboardLayout role="chief" title="Head Chef Kitchen Queue">
       <div className="space-y-6">
@@ -18,29 +22,33 @@ export default function ChefQueuePage() {
             </h2>
             <p className="text-xs text-slate-500">Monitor cooking assignments & dish quality</p>
           </div>
-          <span className="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-full border border-amber-300">
-            5 Orders In Queue
+          <span className="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-extrabold rounded-full border border-amber-300">
+            {kitchenOrders.length} Orders In Queue
           </span>
         </div>
 
-        <div className="space-y-3">
-          {[
-            { id: '#TK-410', dish: 'Paneer Thali + Gulab Jamun', quantity: '2 Meals', status: 'Queued', priority: 'High' },
-            { id: '#TK-411', dish: 'Chicken Biryani + Extra Raita', quantity: '3 Meals', status: 'Queued', priority: 'Normal' },
-            { id: '#TK-412', dish: 'Special Veg Dosa', quantity: '1 Meal', status: 'Queued', priority: 'Normal' },
-          ].map((item, idx) => (
-            <Card key={idx} className="p-4 border-slate-200 flex items-center justify-between">
-              <div>
-                <span className="font-extrabold text-[#054A36]">{item.id}</span>
-                <h3 className="font-bold text-slate-900 text-sm mt-0.5">{item.dish}</h3>
-                <span className="text-xs text-slate-500">{item.quantity}</span>
-              </div>
-              <Button variant="primary" size="sm" leftIcon={<Flame className="h-4 w-4" />}>
-                Start Cooking
-              </Button>
-            </Card>
-          ))}
-        </div>
+        {kitchenOrders.length === 0 ? (
+          <EmptyState
+            icon={<ChefHat className="h-8 w-8 text-slate-400" />}
+            title="Kitchen Queue Clear"
+            description="There are currently no active kitchen preparation tickets in this queue."
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {kitchenOrders.map((order) => (
+              <KDSOrderCard
+                key={order.id}
+                order={order}
+                onStartPreparing={(id) =>
+                  updateOrderStatus(id, 'PREPARING', { preparedBy: 'Head Chef Kitchen', isPaused: false })
+                }
+                onPausePreparation={(id) => updateOrderStatus(id, 'PREPARING', { isPaused: true })}
+                onResumePreparation={(id) => updateOrderStatus(id, 'PREPARING', { isPaused: false })}
+                onMarkReady={(id) => updateOrderStatus(id, 'READY', { pickupCounter: 'Counter A' })}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

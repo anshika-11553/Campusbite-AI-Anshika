@@ -2,11 +2,15 @@
 
 import React from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Card } from '@/components/ui/Card';
-import { Inbox, Clock, CheckCircle2 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { useOrderWorkflow } from '@/context/OrderWorkflowContext';
+import { VendorOrderCard } from '@/components/vendor/VendorOrderCard';
+import { EmptyState } from '@/components/student/common/EmptyState';
+import { Inbox } from 'lucide-react';
 
 export default function VendorIncomingOrdersPage() {
+  const { orders, updateOrderStatus } = useOrderWorkflow();
+  const incomingOrders = orders.filter((o) => o.status === 'PENDING');
+
   return (
     <DashboardLayout role="vendor" title="Incoming Orders">
       <div className="space-y-6">
@@ -18,42 +22,30 @@ export default function VendorIncomingOrdersPage() {
             </h2>
             <p className="text-xs text-slate-500">Approve or accept new orders from campus students</p>
           </div>
-          <span className="px-3 py-1 bg-emerald-100 text-[#054A36] text-xs font-bold rounded-full border border-emerald-300">
-            3 Pending Orders
+          <span className="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-extrabold rounded-full border border-amber-300">
+            {incomingOrders.length} Pending Orders
           </span>
         </div>
 
-        <div className="space-y-4">
-          {[
-            { id: '#TK-402', student: 'Rohan Sharma', items: '1x Veg Biryani, 1x Cold Coffee', total: '₹220', time: '2 min ago' },
-            { id: '#TK-403', student: 'Ananya Gupta', items: '2x Cheese Grilled Sandwich, 1x Fresh Lime', total: '₹180', time: '4 min ago' },
-            { id: '#TK-404', student: 'Karan Patel', items: '1x Chicken Frankie, 1x Thums Up', total: '₹140', time: '6 min ago' },
-          ].map((order, idx) => (
-            <Card key={idx} className="p-5 border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-base text-[#054A36]">{order.id}</span>
-                  <span className="text-xs text-slate-400">•</span>
-                  <span className="font-bold text-sm text-slate-800">{order.student}</span>
-                  <span className="px-2 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-bold rounded-full flex items-center gap-1">
-                    <Clock className="h-3 w-3" /> {order.time}
-                  </span>
-                </div>
-                <p className="text-sm font-medium text-slate-600">{order.items}</p>
-                <span className="text-xs font-bold text-slate-900">Total: {order.total}</span>
-              </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Button variant="outline" size="sm" className="flex-1 sm:flex-initial text-red-600 border-red-200 hover:bg-red-50">
-                  Decline
-                </Button>
-                <Button variant="primary" size="sm" className="flex-1 sm:flex-initial" leftIcon={<CheckCircle2 className="h-4 w-4" />}>
-                  Accept & Start
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
+        {incomingOrders.length === 0 ? (
+          <EmptyState
+            icon={<Inbox className="h-8 w-8 text-slate-400" />}
+            title="No Incoming Pending Orders"
+            description="There are currently no new student pre-orders awaiting vendor approval."
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {incomingOrders.map((order) => (
+              <VendorOrderCard
+                key={order.id}
+                order={order}
+                onAccept={(id) => updateOrderStatus(id, 'ACCEPTED', { acceptedBy: 'Vendor Counter' })}
+                onReject={(id) => updateOrderStatus(id, 'CANCELLED')}
+                onForwardToKitchen={(id) => updateOrderStatus(id, 'SENT_TO_KITCHEN')}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
