@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
+import { SafeImage } from '@/components/ui/SafeImage';
 import { MenuItem } from '@/types/student';
 import { recommendationService } from '@/services/recommendations/recommendationService';
 import { Card } from '@/components/ui/Card';
@@ -26,8 +26,6 @@ export const CompleteYourMealWidget: React.FC<CompleteYourMealProps> = ({ allIte
 
   if (complementaryRecommendations.length === 0) return null;
 
-  const defaultImg = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80';
-
   return (
     <Card className="p-4 bg-slate-900 text-white space-y-3 rounded-2xl border-slate-800 shadow-xl">
       <div className="flex items-center justify-between">
@@ -47,8 +45,9 @@ export const CompleteYourMealWidget: React.FC<CompleteYourMealProps> = ({ allIte
               className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-between gap-2 hover:border-emerald-500 transition-colors"
             >
               <div className="flex items-center gap-2 min-w-0">
+
                 <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-slate-700">
-                  <Image src={item.imageUrl || defaultImg} alt={item.name} fill className="object-cover" />
+                  <SafeImage src={item.imageUrl} alt={item.name} fill className="object-cover" />
                 </div>
                 <div className="min-w-0">
                   <h5 className="font-extrabold text-xs text-white truncate">{item.name}</h5>

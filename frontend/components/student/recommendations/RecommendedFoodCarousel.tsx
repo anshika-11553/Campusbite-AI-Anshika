@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
+import { SafeImage } from '@/components/ui/SafeImage';
 import { RecommendedFoodItem } from '@/services/recommendations/recommendationEngine';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -100,8 +100,8 @@ export const RecommendedFoodCarousel: React.FC<RecommendedFoodCarouselProps> = (
             >
               {/* Image & Recommendation Badge */}
               <div className="relative w-full h-36 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
-                <Image
-                  src={food.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80'}
+                <SafeImage
+                  src={food.imageUrl}
                   alt={food.name}
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-300"
