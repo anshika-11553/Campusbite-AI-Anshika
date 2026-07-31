@@ -1,4 +1,5 @@
 import { apiClient } from '../client';
+import { getFoodImageByName } from '@/lib/FoodImageMap';
 import { ApiResponse } from '@/types/api';
 import {
   MenuItem,
@@ -42,12 +43,34 @@ export interface IStudentApiService {
 class StudentApiService implements IStudentApiService {
   async getMenu(): Promise<ApiResponse<MenuItem[]>> {
     try {
-      const response = await Promise.race([
-        apiClient.get<ApiResponse<MenuItem[]>>('/v1/student/menu'),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 800)),
-      ]);
-      return response.data;
+      const response = await apiClient.get<any>('/menu');
+      const rawData = response.data?.data || response.data;
+      if (Array.isArray(rawData) && rawData.length > 0) {
+        const mappedItems: MenuItem[] = rawData.map((item: any) => ({
+          id: item.id || `item-${Math.random()}`,
+          name: item.name,
+          description: item.description || 'Fresh canteen preparation',
+          priceInINR: item.price || item.priceInINR || 50,
+          category: (item.category || 'main_course').toLowerCase().replace(/\s+/g, '_'),
+          imageUrl: item.image_url || getFoodImageByName(item.name),
+          isAvailable: item.is_available ?? item.isAvailable ?? true,
+          preparationTimeMinutes: item.prep_time || item.preparationTimeMinutes || 10,
+          isVegetarian: item.is_vegetarian ?? item.isVegetarian ?? !item.name.toLowerCase().includes('chicken'),
+          rating: item.rating || 4.7,
+          calories: item.calories || '250 kcal',
+          protein: item.protein || '8g protein',
+          isPopular: item.is_popular ?? item.isPopular ?? true,
+        }));
+        if (mappedItems.length > 0) {
+          return {
+            success: true,
+            data: mappedItems,
+          };
+        }
+      }
+      throw new Error('Empty menu array');
     } catch {
+      // Fallback catalogue if backend endpoint returns empty array or fails
       return {
         success: true,
         data: [

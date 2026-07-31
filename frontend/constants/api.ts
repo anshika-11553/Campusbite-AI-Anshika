@@ -1,25 +1,35 @@
-export const API_VERSION = 'v1';
-
 export const API_ENDPOINTS = {
   AUTH: {
-    LOGIN: `/api/${API_VERSION}/auth/login`,
-    LOGOUT: `/api/${API_VERSION}/auth/logout`,
-    ME: `/api/${API_VERSION}/auth/me`,
-    REFRESH: `/api/${API_VERSION}/auth/refresh`,
+    LOGIN: '/auth/login',
+    REGISTER: '/auth/register',
+    LOGOUT: '/auth/logout',
+    ME: '/auth/me',
+    REFRESH: '/auth/refresh',
   },
   USERS: {
-    PROFILE: `/api/${API_VERSION}/users/profile`,
+    PROFILE: '/users/profile',
   },
   MENU: {
-    ITEMS: `/api/${API_VERSION}/menu/items`,
-    CATEGORIES: `/api/${API_VERSION}/menu/categories`,
+    ITEMS: '/menu',
+    CATEGORIES: '/menu/categories',
   },
   ORDERS: {
-    LIST: `/api/${API_VERSION}/orders`,
-    CREATE: `/api/${API_VERSION}/orders`,
-    STATUS: (id: string) => `/api/${API_VERSION}/orders/${id}/status`,
+    LIST: '/orders',
+    CREATE: '/orders',
+    STATUS: (id: string) => `/orders/${id}/status`,
+  },
+  PAYMENTS: {
+    CREATE: '/payments/create',
+    VERIFY: '/payments/verify',
   },
   NOTIFICATIONS: {
-    LIST: `/api/${API_VERSION}/notifications`,
+    LIST: '/notifications',
+  },
+  VENDOR: {
+    ORDERS: '/vendor/orders',
+    ANALYTICS: '/vendor/analytics',
+  },
+  CHIEF: {
+    QUEUE: '/chief/queue',
   },
 } as const;
