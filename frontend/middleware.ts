@@ -4,9 +4,14 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Public routes that never require authentication or redirect
-  const publicRoutes = ['/', '/login', '/signup', '/forgot-password', '/unauthorized'];
-  if (publicRoutes.includes(pathname) || pathname.startsWith('/_next') || pathname.startsWith('/api')) {
+  // Bypass static files, Next.js assets, and Vercel internal routes
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/images') ||
+    pathname.includes('.') ||
+    pathname === '/favicon.ico'
+  ) {
     return NextResponse.next();
   }
 
@@ -14,5 +19,14 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/student/:path*', '/vendor/:path*', '/admin/:path*', '/chief/:path*'],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  ],
 };

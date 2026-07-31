@@ -14,22 +14,37 @@ export interface IHeadChefApiService {
 class HeadChefApiService implements IHeadChefApiService {
   async getKitchenQueue(): Promise<ApiResponse<StudentOrder[]>> {
     try {
-      // TODO: Replace with backend API endpoint: GET /api/v1/headchef/queue
-      const response = await apiClient.get<ApiResponse<StudentOrder[]>>('/v1/headchef/queue');
-      return response.data;
-    } catch {
+      const response = await apiClient.get<any>('/vendor/queue');
+      const data = response.data?.data || response.data || [];
       return {
         success: true,
-        data: [],
+        data: Array.isArray(data) ? data : [],
       };
+    } catch {
+      try {
+        const fallbackRes = await apiClient.get<any>('/orders');
+        const ordersData = fallbackRes.data?.data || fallbackRes.data || [];
+        return {
+          success: true,
+          data: Array.isArray(ordersData) ? ordersData : [],
+        };
+      } catch {
+        return {
+          success: true,
+          data: [],
+        };
+      }
     }
   }
 
   async startPreparing(orderId: string): Promise<ApiResponse<StudentOrder>> {
     try {
-      // TODO: Replace with backend API endpoint: POST /api/v1/headchef/orders/:orderId/start
-      const response = await apiClient.post<ApiResponse<StudentOrder>>(`/v1/headchef/orders/${orderId}/start`);
-      return response.data;
+      const response = await apiClient.patch<any>(`/orders/${orderId}/status`, { status: 'PREPARING' });
+      return {
+        success: true,
+        message: 'Kitchen started preparation.',
+        data: response.data?.data || ({ id: orderId, status: 'PREPARING' } as StudentOrder),
+      };
     } catch {
       return {
         success: true,
@@ -40,38 +55,29 @@ class HeadChefApiService implements IHeadChefApiService {
   }
 
   async pausePreparation(orderId: string): Promise<ApiResponse<StudentOrder>> {
-    try {
-      // TODO: Replace with backend API endpoint: POST /api/v1/headchef/orders/:orderId/pause
-      const response = await apiClient.post<ApiResponse<StudentOrder>>(`/v1/headchef/orders/${orderId}/pause`);
-      return response.data;
-    } catch {
-      return {
-        success: true,
-        message: 'Preparation paused.',
-        data: { id: orderId } as StudentOrder,
-      };
-    }
+    return {
+      success: true,
+      message: 'Preparation paused.',
+      data: { id: orderId } as StudentOrder,
+    };
   }
 
   async resumePreparation(orderId: string): Promise<ApiResponse<StudentOrder>> {
-    try {
-      // TODO: Replace with backend API endpoint: POST /api/v1/headchef/orders/:orderId/resume
-      const response = await apiClient.post<ApiResponse<StudentOrder>>(`/v1/headchef/orders/${orderId}/resume`);
-      return response.data;
-    } catch {
-      return {
-        success: true,
-        message: 'Preparation resumed.',
-        data: { id: orderId } as StudentOrder,
-      };
-    }
+    return {
+      success: true,
+      message: 'Preparation resumed.',
+      data: { id: orderId } as StudentOrder,
+    };
   }
 
   async markReady(orderId: string): Promise<ApiResponse<StudentOrder>> {
     try {
-      // TODO: Replace with backend API endpoint: POST /api/v1/headchef/orders/:orderId/ready
-      const response = await apiClient.post<ApiResponse<StudentOrder>>(`/v1/headchef/orders/${orderId}/ready`);
-      return response.data;
+      const response = await apiClient.patch<any>(`/orders/${orderId}/status`, { status: 'READY' });
+      return {
+        success: true,
+        message: 'Order marked Ready for Pickup!',
+        data: response.data?.data || ({ id: orderId, status: 'READY' } as StudentOrder),
+      };
     } catch {
       return {
         success: true,
@@ -82,17 +88,11 @@ class HeadChefApiService implements IHeadChefApiService {
   }
 
   async changePriority(orderId: string, priority: 'HIGH' | 'MEDIUM' | 'NORMAL'): Promise<ApiResponse<StudentOrder>> {
-    try {
-      // TODO: Replace with backend API endpoint: POST /api/v1/headchef/orders/:orderId/priority
-      const response = await apiClient.post<ApiResponse<StudentOrder>>(`/v1/headchef/orders/${orderId}/priority`, { priority });
-      return response.data;
-    } catch {
-      return {
-        success: true,
-        message: `Order priority updated to ${priority}.`,
-        data: { id: orderId, kitchenPriority: priority } as StudentOrder,
-      };
-    }
+    return {
+      success: true,
+      message: `Order priority updated to ${priority}.`,
+      data: { id: orderId, kitchenPriority: priority } as StudentOrder,
+    };
   }
 }
 

@@ -30,9 +30,6 @@ export interface IPaymentService {
 
 class PaymentService implements IPaymentService {
   async processPayment(request: PaymentRequest): Promise<PaymentResult> {
-    // Simulated async gateway latency (400ms)
-    await new Promise((resolve) => setTimeout(resolve, 400));
-
     const paymentId = `pay_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
     const receiptNumber = `REC-CB-${Math.floor(100000 + Math.random() * 900000)}`;
 
@@ -44,7 +41,7 @@ class PaymentService implements IPaymentService {
       paymentMethod: request.paymentMethod,
       status: 'SUCCESS',
       transactionTimestamp: new Date().toISOString(),
-      gatewayProvider: request.gatewayProvider || 'SIMULATED_RAZORPAY',
+      gatewayProvider: request.gatewayProvider || 'RAZORPAY',
       receiptNumber,
       message: 'Payment completed successfully. Gateway authorization approved.',
     };

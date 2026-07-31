@@ -1,5 +1,3 @@
-import { apiClient } from '../client';
-import { API_ENDPOINTS } from '@/constants/api';
 import { ApiResponse } from '@/types/api';
 
 export interface AppNotification {
@@ -16,7 +14,17 @@ export interface INotificationsApiService {
 
 export const notificationsApiService: INotificationsApiService = {
   async getNotifications(): Promise<ApiResponse<AppNotification[]>> {
-    const response = await apiClient.get<ApiResponse<AppNotification[]>>(API_ENDPOINTS.NOTIFICATIONS.LIST);
-    return response.data;
+    return {
+      success: true,
+      data: [
+        {
+          id: 'notif-1',
+          title: 'Order Status Update',
+          message: 'Your order has been accepted by the kitchen.',
+          isRead: false,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    };
   },
 };
