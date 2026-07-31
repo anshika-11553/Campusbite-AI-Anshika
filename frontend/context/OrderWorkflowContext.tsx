@@ -11,6 +11,8 @@ interface OrderWorkflowContextType {
   orders: StudentOrder[];
   placeOrder: (newOrder: Omit<StudentOrder, 'id' | 'orderNumber' | 'tokenNumber' | 'createdAt' | 'queuePosition' | 'pickupCounter' | 'status'>) => StudentOrder;
   updateOrderStatus: (orderId: string, status: OrderStatus, extra?: Partial<StudentOrder>) => void;
+  cancelOrder: (orderId: string) => void;
+  markOrderDelivered: (orderId: string, inputToken: string) => { success: boolean; message: string };
   getOrdersByStatus: (statuses: OrderStatus[]) => StudentOrder[];
   getActiveStudentOrder: () => StudentOrder | null;
 }
@@ -21,7 +23,7 @@ const INITIAL_DEMO_ORDERS: StudentOrder[] = [
   {
     id: 'ord-101',
     orderNumber: 'CB-8492',
-    tokenNumber: '27',
+    tokenNumber: 'CB-1001',
     studentId: 'std-user-1',
     studentName: 'Anshika Sharma',
     vendorName: 'Main Campus Food Court',
@@ -65,30 +67,89 @@ const INITIAL_DEMO_ORDERS: StudentOrder[] = [
   },
 ];
 
+const LOCAL_STORAGE_KEY = 'campusbite_global_orders_store';
+
 export const OrderWorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { showToast } = useToast();
-  const [orders, setOrders] = useState<StudentOrder[]>(INITIAL_DEMO_ORDERS);
+
+  // Load from localStorage or initialize with demo orders
+  const [orders, setOrders] = useState<StudentOrder[]>(() => {
+    if (typeof window === 'undefined') return INITIAL_DEMO_ORDERS;
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // fallback
+    }
+    return INITIAL_DEMO_ORDERS;
+  });
+
+  // Sync state changes to localStorage and dispatch custom storage event for local tabs
+  const persistAndSync = useCallback((updatedOrders: StudentOrder[]) => {
+    setOrders(updatedOrders);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedOrders));
+        window.dispatchEvent(new Event('storage'));
+      } catch (e) {
+        console.error('Failed to sync global order store:', e);
+      }
+    }
+  }, []);
+
+  // Listen for storage events from other tabs / windows
+  useEffect(() => {
+    const handleStorageChange = () => {
+      try {
+        const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setOrders(parsed);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Track toasted event keys to guarantee single notification delivery
+  const toastedKeysRef = React.useRef<Set<string>>(new Set());
+
+  const notifyOnce = useCallback((key: string, msg: string, type: 'success' | 'info' | 'warning' | 'error') => {
+    if (!toastedKeysRef.current.has(key)) {
+      toastedKeysRef.current.add(key);
+      showToast(msg, type);
+    }
+  }, [showToast]);
 
   // Handle EventBus Subscriptions for Cross-Dashboard Notification Alerts
   useEffect(() => {
     const unsubAccepted = eventBus.subscribe<{ order: StudentOrder }>(WORKFLOW_EVENTS.ORDER_ACCEPTED, ({ order }) => {
-      showToast(`Token #${order.tokenNumber} Accepted by Vendor!`, 'success');
+      notifyOnce(`ACCEPTED-${order.id}`, `Token #${order.tokenNumber} Accepted by Vendor!`, 'success');
     });
 
     const unsubForwarded = eventBus.subscribe<{ order: StudentOrder }>(WORKFLOW_EVENTS.FORWARDED_TO_KITCHEN, ({ order }) => {
-      showToast(`Token #${order.tokenNumber} Forwarded to Kitchen Queue.`, 'info');
+      notifyOnce(`FORWARDED-${order.id}`, `Token #${order.tokenNumber} Forwarded to Kitchen Queue.`, 'info');
     });
 
     const unsubPreparing = eventBus.subscribe<{ order: StudentOrder }>(WORKFLOW_EVENTS.PREPARATION_STARTED, ({ order }) => {
-      showToast(`Head Chef started preparing Token #${order.tokenNumber}! 🔥`, 'info');
+      notifyOnce(`PREPARING-${order.id}`, `Head Chef started cooking Token #${order.tokenNumber}! 🔥`, 'info');
     });
 
     const unsubReady = eventBus.subscribe<{ order: StudentOrder }>(WORKFLOW_EVENTS.ORDER_READY, ({ order }) => {
-      showToast(`🎉 Token #${order.tokenNumber} is READY for Pickup at ${order.pickupCounter || 'Counter A'}!`, 'success');
+      notifyOnce(`READY-${order.id}`, `🎉 Token #${order.tokenNumber} is READY for Pickup at ${order.pickupCounter || 'Counter A'}!`, 'success');
     });
 
     const unsubCollected = eventBus.subscribe<{ order: StudentOrder }>(WORKFLOW_EVENTS.ORDER_COLLECTED, ({ order }) => {
-      showToast(`Token #${order.tokenNumber} collected. Thank you!`, 'success');
+      notifyOnce(`COLLECTED-${order.id}`, `Token #${order.tokenNumber} Delivered & Completed!`, 'success');
     });
 
     return () => {
@@ -98,43 +159,72 @@ export const OrderWorkflowProvider: React.FC<{ children: React.ReactNode }> = ({
       unsubReady();
       unsubCollected();
     };
-  }, [showToast]);
+  }, [notifyOnce]);
 
   const updateOrderStatus = useCallback((orderId: string, status: OrderStatus, extra?: Partial<StudentOrder>) => {
-    setOrders((prev) => {
-      const updated = prev.map((order) => {
-        if (order.id === orderId) {
-          const nextOrder: StudentOrder = { ...order, ...extra, status };
+    let targetOrder: StudentOrder | undefined;
 
-          // Recalculate queue position
-          nextOrder.queuePosition = queueManagerService.calculateQueuePosition(prev, orderId);
+    const currentSaved = typeof window !== 'undefined' ? localStorage.getItem(LOCAL_STORAGE_KEY) : null;
+    const currentOrders: StudentOrder[] = currentSaved ? JSON.parse(currentSaved) : orders;
 
-          // Recycle Token if Completed or Cancelled
-          if (status === 'COLLECTED' || status === 'CANCELLED') {
-            tokenGeneratorService.releaseToken(order.tokenNumber);
-          }
+    const updated = currentOrders.map((order) => {
+      if (order.id === orderId) {
+        const nextOrder: StudentOrder = { ...order, ...extra, status };
 
-          // Trigger EventBus
-          if (status === 'ACCEPTED') eventBus.publish(WORKFLOW_EVENTS.ORDER_ACCEPTED, { order: nextOrder });
-          if (status === 'SENT_TO_KITCHEN') eventBus.publish(WORKFLOW_EVENTS.FORWARDED_TO_KITCHEN, { order: nextOrder });
-          if (status === 'PREPARING') eventBus.publish(WORKFLOW_EVENTS.PREPARATION_STARTED, { order: nextOrder });
-          if (status === 'READY') eventBus.publish(WORKFLOW_EVENTS.ORDER_READY, { order: nextOrder });
-          if (status === 'COLLECTED') eventBus.publish(WORKFLOW_EVENTS.ORDER_COLLECTED, { order: nextOrder });
+        // Recalculate queue position
+        nextOrder.queuePosition = queueManagerService.calculateQueuePosition(currentOrders, orderId);
 
-          return nextOrder;
+        // Recycle Token if Completed or Cancelled
+        if (status === 'COLLECTED' || status === 'CANCELLED') {
+          tokenGeneratorService.releaseToken();
         }
-        return order;
-      });
 
-      return updated;
+        targetOrder = nextOrder;
+        return nextOrder;
+      }
+      return order;
     });
-  }, []);
+
+    persistAndSync(updated);
+
+    if (targetOrder) {
+      const order = targetOrder;
+      if (status === 'ACCEPTED') eventBus.publish(WORKFLOW_EVENTS.ORDER_ACCEPTED, { order });
+      if (status === 'SENT_TO_KITCHEN') eventBus.publish(WORKFLOW_EVENTS.FORWARDED_TO_KITCHEN, { order });
+      if (status === 'PREPARING') eventBus.publish(WORKFLOW_EVENTS.PREPARATION_STARTED, { order });
+      if (status === 'READY') eventBus.publish(WORKFLOW_EVENTS.ORDER_READY, { order });
+      if (status === 'COLLECTED') eventBus.publish(WORKFLOW_EVENTS.ORDER_COLLECTED, { order });
+    }
+  }, [orders, persistAndSync]);
+
+  const cancelOrder = useCallback(
+    (orderId: string) => {
+      const currentSaved = typeof window !== 'undefined' ? localStorage.getItem(LOCAL_STORAGE_KEY) : null;
+      const currentOrders: StudentOrder[] = currentSaved ? JSON.parse(currentSaved) : orders;
+
+      const target = currentOrders.find((o) => o.id === orderId);
+      if (target) {
+        tokenGeneratorService.releaseToken();
+        showToast(`Order #${target.orderNumber} (Token #${target.tokenNumber}) Cancelled.`, 'info');
+      }
+
+      const updated = currentOrders.map((o) => (o.id === orderId ? { ...o, status: 'CANCELLED' as OrderStatus } : o));
+      persistAndSync(updated);
+    },
+    [orders, persistAndSync, showToast]
+  );
 
   const placeOrder = useCallback(
     (newOrderData: Omit<StudentOrder, 'id' | 'orderNumber' | 'tokenNumber' | 'createdAt' | 'queuePosition' | 'pickupCounter' | 'status'>) => {
+      const currentSaved = typeof window !== 'undefined' ? localStorage.getItem(LOCAL_STORAGE_KEY) : null;
+      const currentOrders: StudentOrder[] = currentSaved ? JSON.parse(currentSaved) : orders;
+
       const tokenNumber = tokenGeneratorService.generateNextToken();
       const orderId = `ord-${Date.now()}`;
       const orderNumber = `CB-${Math.floor(1000 + Math.random() * 9000)}`;
+      const paymentId = `pay_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+      const receiptNumber = `REC-CB-${Math.floor(100000 + Math.random() * 900000)}`;
+      const gstAmountInINR = Math.round(newOrderData.totalAmountInINR * 0.05);
 
       const createdOrder: StudentOrder = {
         ...newOrderData,
@@ -143,19 +233,66 @@ export const OrderWorkflowProvider: React.FC<{ children: React.ReactNode }> = ({
         tokenNumber,
         createdAt: new Date().toISOString(),
         status: 'PENDING',
-        queuePosition: orders.length + 1,
+        paymentStatus: 'PAID',
+        paymentId,
+        receiptNumber,
+        gstAmountInINR,
+        isDelivered: false,
+        queuePosition: currentOrders.length + 1,
         pickupCounter: 'Counter A',
         qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TOKEN-${tokenNumber}-${orderNumber}`,
       };
 
-      setOrders((prev) => [createdOrder, ...prev]);
+      const updated = [createdOrder, ...currentOrders];
+      persistAndSync(updated);
 
       eventBus.publish(WORKFLOW_EVENTS.ORDER_PLACED, { order: createdOrder });
-      showToast(`Order Placed! Your Token Number is #${tokenNumber}`, 'success');
+      showToast(`Payment Verified & Token #${tokenNumber} Generated! Order sent to Vendor & Kitchen.`, 'success');
 
       return createdOrder;
     },
-    [orders.length, showToast]
+    [orders, persistAndSync, showToast]
+  );
+
+  const markOrderDelivered = useCallback(
+    (orderId: string, inputToken: string) => {
+      let result = { success: false, message: 'Order not found.' };
+
+      const currentSaved = typeof window !== 'undefined' ? localStorage.getItem(LOCAL_STORAGE_KEY) : null;
+      const currentOrders: StudentOrder[] = currentSaved ? JSON.parse(currentSaved) : orders;
+
+      const updated = currentOrders.map((o) => {
+        if (o.id === orderId) {
+          if (o.isDelivered || o.status === 'COLLECTED') {
+            result = { success: false, message: `Token #${o.tokenNumber} has ALREADY been delivered!` };
+            return o;
+          }
+          if (o.tokenNumber !== inputToken.trim()) {
+            result = { success: false, message: `Token mismatch! Expected #${o.tokenNumber}, received #${inputToken}.` };
+            return o;
+          }
+
+          tokenGeneratorService.releaseToken();
+          result = { success: true, message: `Token #${o.tokenNumber} verified & order marked DELIVERED / COMPLETED!` };
+          return { ...o, status: 'COLLECTED' as OrderStatus, isDelivered: true };
+        }
+        return o;
+      });
+
+      if (result.success) {
+        persistAndSync(updated);
+        showToast(result.message, 'success');
+        const target = updated.find((o) => o.id === orderId);
+        if (target) {
+          eventBus.publish(WORKFLOW_EVENTS.ORDER_COLLECTED, { order: target });
+        }
+      } else {
+        showToast(result.message, 'error');
+      }
+
+      return result;
+    },
+    [orders, persistAndSync, showToast]
   );
 
   const getOrdersByStatus = useCallback(
@@ -175,6 +312,8 @@ export const OrderWorkflowProvider: React.FC<{ children: React.ReactNode }> = ({
         orders,
         placeOrder,
         updateOrderStatus,
+        cancelOrder,
+        markOrderDelivered,
         getOrdersByStatus,
         getActiveStudentOrder,
       }}

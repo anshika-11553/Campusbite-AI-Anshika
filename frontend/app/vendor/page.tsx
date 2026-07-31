@@ -8,7 +8,12 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { EmptyState } from '@/components/student/common/EmptyState';
 import { formatCurrency } from '@/constants/currency';
-import { Store, Search, Clock, CheckCircle2, Flame, ShoppingBag } from 'lucide-react';
+import { paymentVerificationService } from '@/services/payment/paymentVerificationService';
+import { PaymentRecord } from '@/types/payment';
+import { useVendor } from '@/context/VendorContext';
+import { useToast } from '@/hooks/useToast';
+import { Button } from '@/components/ui/Button';
+import { Store, Search, Clock, CheckCircle2, Flame, ShoppingBag, ShieldCheck } from 'lucide-react';
 
 export default function VendorDashboardPage() {
   const { orders, updateOrderStatus } = useOrderWorkflow();
@@ -57,6 +62,9 @@ export default function VendorDashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* 💳 Payment Verification Queue Banner */}
+        <VendorPaymentVerificationCard />
 
         {/* Vendor Order Statistics Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -153,5 +161,72 @@ export default function VendorDashboardPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+function VendorPaymentVerificationCard() {
+  const { currentVendor } = useVendor();
+  const { showToast } = useToast();
+  const [payments, setPayments] = useState<PaymentRecord[]>(() =>
+    paymentVerificationService.getPendingPaymentsForVendor(currentVendor?.vendorId || 'vnd-main-01')
+  );
+
+  const handleVerify = (payId: string) => {
+    const res = paymentVerificationService.verifyPaymentByVendor(payId, currentVendor?.vendorId || 'vnd-main-01');
+    if (res.success) {
+      showToast('Payment Received & Verified! Student can now generate pickup token.', 'success');
+      setPayments(paymentVerificationService.getPendingPaymentsForVendor(currentVendor?.vendorId || 'vnd-main-01'));
+    }
+  };
+
+  const pendingList = payments.filter((p) => p.status === 'PENDING');
+
+  if (pendingList.length === 0) return null;
+
+  return (
+    <Card className="p-4 border-amber-300 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/20 space-y-3">
+      <div className="flex items-center justify-between border-b border-amber-200 dark:border-amber-900 pb-2">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-5 w-5 text-amber-600" />
+          <h3 className="font-extrabold text-sm text-amber-900 dark:text-amber-300">
+            Pending Student Payment Verification Requests ({pendingList.length})
+          </h3>
+        </div>
+        <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] font-bold">
+          Requires Action
+        </span>
+      </div>
+
+      <div className="space-y-2">
+        {pendingList.map((p) => (
+          <div
+            key={p.id}
+            className="p-3 bg-white dark:bg-slate-900 border border-amber-200 dark:border-slate-800 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs"
+          >
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-slate-900 dark:text-white">{p.studentName}</span>
+                <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold">
+                  {p.status}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Ref #{p.orderNumber} • Amount: <strong className="text-slate-900 dark:text-white">₹{p.amountInINR}</strong> • Time: {new Date(p.createdAt).toLocaleTimeString()}
+              </p>
+            </div>
+
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => handleVerify(p.id)}
+              leftIcon={<CheckCircle2 className="h-3.5 w-3.5" />}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shrink-0"
+            >
+              Payment Received (Verify & Authorize Token)
+            </Button>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }

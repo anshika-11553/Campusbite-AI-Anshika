@@ -36,6 +36,10 @@ import { OrderHistorySkeleton } from '@/components/student/skeletons/OrderHistor
 import { ApiErrorDisplay } from '@/components/student/common/ApiErrorDisplay';
 import { useToast } from '@/hooks/useToast';
 
+import { recommendationService } from '@/services/recommendations/recommendationService';
+import { RecommendedFoodCarousel } from '@/components/student/recommendations/RecommendedFoodCarousel';
+import { OrderAgainWidget } from '@/components/student/recommendations/OrderAgainWidget';
+
 import { Utensils, History, Clock, PieChart, Sparkles } from 'lucide-react';
 import { analytics } from '@/services/analytics';
 
@@ -50,7 +54,7 @@ export type DashboardTab = 'menu' | 'queue' | 'orders' | 'analytics';
 export default function StudentDashboardPage() {
   const { addItem, itemCount, setIsCartOpen } = useCart();
   const { showToast } = useToast();
-  const { orders, placeOrder, updateOrderStatus, getActiveStudentOrder } = useOrderWorkflow();
+  const { orders, placeOrder, updateOrderStatus, cancelOrder, getActiveStudentOrder } = useOrderWorkflow();
 
   const [activeTab, setActiveTab] = useState<DashboardTab>('menu');
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -260,6 +264,33 @@ export default function StudentDashboardPage() {
         {/* Enhanced 8-Metric Statistics Grid */}
         <StatsOverview stats={stats} />
 
+        {/* ⏰ Order Again Reminder & 🔄 Reorder Last Order */}
+        <OrderAgainWidget lastOrder={orders[0]} />
+
+        {/* ✨ AI Recommended For You (Personalized Prediction Engine) */}
+        <RecommendedFoodCarousel
+          title="✨ AI Recommended For You"
+          subtitle="Intelligent recommendations based on your preferences, spending budget & time of day"
+          items={recommendationService.getPersonalizedSection(orders, menuItems)}
+          isLoading={isLoadingMenu}
+        />
+
+        {/* 🏆 Top Picks For You */}
+        <RecommendedFoodCarousel
+          title="🏆 Top Picks For You"
+          subtitle="Highest matching dishes calculated from your recent order history"
+          items={recommendationService.getTopPicksSection(orders, menuItems)}
+          isLoading={isLoadingMenu}
+        />
+
+        {/* 📈 People Like You Also Ordered */}
+        <RecommendedFoodCarousel
+          title="📈 People Like You Also Ordered"
+          subtitle="Popular combos and pairings ordered by students with similar taste profiles"
+          items={recommendationService.getPeopleAlsoOrdered(useCart().items.map((i) => i.menuItem), menuItems)}
+          isLoading={isLoadingMenu}
+        />
+
         {/* Today's Special Banner */}
         <SpecialsBanner specialItem={specialItem} onAddToCart={addItem} />
 
@@ -397,6 +428,7 @@ export default function StudentDashboardPage() {
               <TokenCard
                 order={activeOrder}
                 onConfirmCollection={(id) => updateOrderStatus(id, 'COLLECTED')}
+                onCancelOrder={(id) => cancelOrder(id)}
               />
             ) : (
               <EmptyState

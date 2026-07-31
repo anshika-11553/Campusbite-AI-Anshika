@@ -5,14 +5,15 @@ import { StudentOrder } from '@/types/student';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Clock, CheckCircle2, ChefHat, PackageCheck, Flame, Users, Store, ArrowRight, UserCheck } from 'lucide-react';
+import { Clock, CheckCircle2, ChefHat, PackageCheck, Flame, Users, Store, ArrowRight, UserCheck, XCircle } from 'lucide-react';
 
 interface TokenCardProps {
   order: StudentOrder;
   onConfirmCollection?: (orderId: string) => void;
+  onCancelOrder?: (orderId: string) => void;
 }
 
-export const TokenCard: React.FC<TokenCardProps> = ({ order, onConfirmCollection }) => {
+export const TokenCard: React.FC<TokenCardProps> = ({ order, onConfirmCollection, onCancelOrder }) => {
   const [countdownMinutes, setCountdownMinutes] = useState<number>(order.estimatedPreparationTimeMinutes || 8);
   const [countdownSeconds, setCountdownSeconds] = useState<number>(0);
 
@@ -91,6 +92,17 @@ export const TokenCard: React.FC<TokenCardProps> = ({ order, onConfirmCollection
               className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold shadow-md animate-bounce py-3"
             >
               I Have Collected Order
+            </Button>
+          )}
+
+          {(order.status === 'PENDING' || order.status === 'ACCEPTED') && onCancelOrder && (
+            <Button
+              variant="outline"
+              onClick={() => onCancelOrder(order.id)}
+              leftIcon={<XCircle className="h-4 w-4 text-red-300" />}
+              className="bg-white/10 hover:bg-red-600 text-white border-white/30 font-extrabold text-xs py-2 rounded-xl"
+            >
+              Cancel Order
             </Button>
           )}
         </div>

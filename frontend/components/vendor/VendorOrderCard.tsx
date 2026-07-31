@@ -60,11 +60,14 @@ export const VendorOrderCard: React.FC<VendorOrderCardProps> = ({
               <Badge variant="emerald" className="text-[10px]">
                 {order.status}
               </Badge>
+              <span className="text-[10px] font-extrabold bg-emerald-100 text-[#054A36] px-2 py-0.5 rounded-full border border-emerald-300">
+                PAID ({order.paymentMethod})
+              </span>
             </div>
             <p className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
-              <span>Order #{order.orderNumber}</span>
+              <span>Order #{order.orderNumber} ({formattedTime})</span>
               <span>•</span>
-              <span>{formattedTime}</span>
+              <span>Payment ID: {order.paymentId || 'pay_razorpay_simulated'}</span>
             </p>
           </div>
         </div>
@@ -170,8 +173,20 @@ export const VendorOrderCard: React.FC<VendorOrderCardProps> = ({
           )}
 
           {order.status === 'READY' && (
-            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
-              Ready at {order.pickupCounter || 'Counter A'}
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => onForwardToKitchen(order.id)}
+              leftIcon={<Check className="h-4 w-4" />}
+              className="bg-[#054A36] text-xs font-bold"
+            >
+              Verify Token & Mark Delivered
+            </Button>
+          )}
+
+          {order.status === 'COLLECTED' && (
+            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+              Completed & Delivered
             </span>
           )}
         </div>

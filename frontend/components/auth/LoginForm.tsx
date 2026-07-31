@@ -140,8 +140,15 @@ export const LoginForm: React.FC = () => {
         rightIcon={<ArrowRight className="h-4 w-4" />}
         className="w-full mt-2 font-semibold text-base py-3"
       >
-        Sign In as {selectedRole.toUpperCase()}
+        Sign In as {selectedRole === 'chief' ? 'HEAD CHEF' : selectedRole.toUpperCase()}
       </Button>
+
+      <div className="text-center pt-2 text-xs text-slate-500">
+        Don&apos;t have an account?{' '}
+        <a href="/signup" className="font-semibold text-[#054A36] hover:underline">
+          Create Account
+        </a>
+      </div>
     </form>
   );
 };
