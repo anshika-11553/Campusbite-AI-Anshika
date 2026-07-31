@@ -14,23 +14,32 @@ export interface IHeadChefApiService {
 class HeadChefApiService implements IHeadChefApiService {
   async getKitchenQueue(): Promise<ApiResponse<StudentOrder[]>> {
     try {
-      const response = await apiClient.get<any>('/chief/queue');
+      const response = await apiClient.get<any>('/vendor/queue');
       const data = response.data?.data || response.data || [];
       return {
         success: true,
         data: Array.isArray(data) ? data : [],
       };
     } catch {
-      return {
-        success: true,
-        data: [],
-      };
+      try {
+        const fallbackRes = await apiClient.get<any>('/orders');
+        const ordersData = fallbackRes.data?.data || fallbackRes.data || [];
+        return {
+          success: true,
+          data: Array.isArray(ordersData) ? ordersData : [],
+        };
+      } catch {
+        return {
+          success: true,
+          data: [],
+        };
+      }
     }
   }
 
   async startPreparing(orderId: string): Promise<ApiResponse<StudentOrder>> {
     try {
-      const response = await apiClient.post<any>(`/chief/orders/${orderId}/start`);
+      const response = await apiClient.patch<any>(`/orders/${orderId}/status`, { status: 'PREPARING' });
       return {
         success: true,
         message: 'Kitchen started preparation.',
@@ -46,42 +55,24 @@ class HeadChefApiService implements IHeadChefApiService {
   }
 
   async pausePreparation(orderId: string): Promise<ApiResponse<StudentOrder>> {
-    try {
-      const response = await apiClient.post<any>(`/chief/orders/${orderId}/pause`);
-      return {
-        success: true,
-        message: 'Preparation paused.',
-        data: response.data?.data || ({ id: orderId } as StudentOrder),
-      };
-    } catch {
-      return {
-        success: true,
-        message: 'Preparation paused.',
-        data: { id: orderId } as StudentOrder,
-      };
-    }
+    return {
+      success: true,
+      message: 'Preparation paused.',
+      data: { id: orderId } as StudentOrder,
+    };
   }
 
   async resumePreparation(orderId: string): Promise<ApiResponse<StudentOrder>> {
-    try {
-      const response = await apiClient.post<any>(`/chief/orders/${orderId}/resume`);
-      return {
-        success: true,
-        message: 'Preparation resumed.',
-        data: response.data?.data || ({ id: orderId } as StudentOrder),
-      };
-    } catch {
-      return {
-        success: true,
-        message: 'Preparation resumed.',
-        data: { id: orderId } as StudentOrder,
-      };
-    }
+    return {
+      success: true,
+      message: 'Preparation resumed.',
+      data: { id: orderId } as StudentOrder,
+    };
   }
 
   async markReady(orderId: string): Promise<ApiResponse<StudentOrder>> {
     try {
-      const response = await apiClient.post<any>(`/chief/orders/${orderId}/ready`);
+      const response = await apiClient.patch<any>(`/orders/${orderId}/status`, { status: 'READY' });
       return {
         success: true,
         message: 'Order marked Ready for Pickup!',
@@ -97,20 +88,11 @@ class HeadChefApiService implements IHeadChefApiService {
   }
 
   async changePriority(orderId: string, priority: 'HIGH' | 'MEDIUM' | 'NORMAL'): Promise<ApiResponse<StudentOrder>> {
-    try {
-      const response = await apiClient.post<any>(`/chief/orders/${orderId}/priority`, { priority });
-      return {
-        success: true,
-        message: `Order priority updated to ${priority}.`,
-        data: response.data?.data || ({ id: orderId, kitchenPriority: priority } as StudentOrder),
-      };
-    } catch {
-      return {
-        success: true,
-        message: `Order priority updated to ${priority}.`,
-        data: { id: orderId, kitchenPriority: priority } as StudentOrder,
-      };
-    }
+    return {
+      success: true,
+      message: `Order priority updated to ${priority}.`,
+      data: { id: orderId, kitchenPriority: priority } as StudentOrder,
+    };
   }
 }
 

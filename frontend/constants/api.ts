@@ -2,34 +2,23 @@ export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: '/auth/login',
     REGISTER: '/auth/register',
-    LOGOUT: '/auth/logout',
-    ME: '/auth/me',
-    REFRESH: '/auth/refresh',
-  },
-  USERS: {
-    PROFILE: '/users/profile',
+    PROFILE: '/auth/profile',
   },
   MENU: {
-    ITEMS: '/menu',
-    CATEGORIES: '/menu/categories',
+    LIST: '/menu',
+    SEARCH: '/menu/search',
   },
   ORDERS: {
     LIST: '/orders',
     CREATE: '/orders',
+    DETAIL: (id: string) => `/orders/${id}`,
     STATUS: (id: string) => `/orders/${id}/status`,
-  },
-  PAYMENTS: {
-    CREATE: '/payments/create',
-    VERIFY: '/payments/verify',
-  },
-  NOTIFICATIONS: {
-    LIST: '/notifications',
   },
   VENDOR: {
     ORDERS: '/vendor/orders',
+    DASHBOARD: '/vendor/dashboard',
+    POPULAR_ITEMS: '/vendor/popular-items',
+    QUEUE: '/vendor/queue',
     ANALYTICS: '/vendor/analytics',
-  },
-  CHIEF: {
-    QUEUE: '/chief/queue',
   },
 } as const;

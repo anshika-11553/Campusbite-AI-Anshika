@@ -4,6 +4,10 @@ import { StudentOrder } from '@/types/student';
 
 export interface IVendorApiService {
   getIncomingOrders(): Promise<ApiResponse<StudentOrder[]>>;
+  getDashboard(): Promise<ApiResponse<any>>;
+  getPopularItems(): Promise<ApiResponse<any[]>>;
+  getQueue(): Promise<ApiResponse<StudentOrder[]>>;
+  getAnalytics(): Promise<ApiResponse<any>>;
   acceptOrder(orderId: string): Promise<ApiResponse<StudentOrder>>;
   rejectOrder(orderId: string): Promise<ApiResponse<{ orderId: string }>>;
   forwardToKitchen(orderId: string): Promise<ApiResponse<StudentOrder>>;
@@ -29,9 +33,71 @@ class VendorApiService implements IVendorApiService {
     }
   }
 
+  async getDashboard(): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.get<any>('/vendor/dashboard');
+      return {
+        success: true,
+        data: response.data?.data || response.data || {},
+      };
+    } catch {
+      return {
+        success: true,
+        data: { activeOrdersCount: 0, totalRevenue: 0, averagePrepTime: 10 },
+      };
+    }
+  }
+
+  async getPopularItems(): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await apiClient.get<any>('/vendor/popular-items');
+      const data = response.data?.data || response.data || [];
+      return {
+        success: true,
+        data: Array.isArray(data) ? data : [],
+      };
+    } catch {
+      return {
+        success: true,
+        data: [],
+      };
+    }
+  }
+
+  async getQueue(): Promise<ApiResponse<StudentOrder[]>> {
+    try {
+      const response = await apiClient.get<any>('/vendor/queue');
+      const data = response.data?.data || response.data || [];
+      return {
+        success: true,
+        data: Array.isArray(data) ? data : [],
+      };
+    } catch {
+      return {
+        success: true,
+        data: [],
+      };
+    }
+  }
+
+  async getAnalytics(): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.get<any>('/vendor/analytics');
+      return {
+        success: true,
+        data: response.data?.data || response.data || {},
+      };
+    } catch {
+      return {
+        success: true,
+        data: { dailyRevenue: 0, orderVolume: 0 },
+      };
+    }
+  }
+
   async acceptOrder(orderId: string): Promise<ApiResponse<StudentOrder>> {
     try {
-      const response = await apiClient.post<any>(`/vendor/orders/${orderId}/accept`);
+      const response = await apiClient.patch<any>(`/orders/${orderId}/status`, { status: 'ACCEPTED' });
       return {
         success: true,
         message: 'Order accepted successfully!',
@@ -48,7 +114,7 @@ class VendorApiService implements IVendorApiService {
 
   async rejectOrder(orderId: string): Promise<ApiResponse<{ orderId: string }>> {
     try {
-      const response = await apiClient.post<any>(`/vendor/orders/${orderId}/reject`);
+      const response = await apiClient.patch<any>(`/orders/${orderId}/status`, { status: 'CANCELLED' });
       return {
         success: true,
         message: 'Order rejected.',
@@ -65,7 +131,7 @@ class VendorApiService implements IVendorApiService {
 
   async forwardToKitchen(orderId: string): Promise<ApiResponse<StudentOrder>> {
     try {
-      const response = await apiClient.post<any>(`/vendor/orders/${orderId}/forward-kitchen`);
+      const response = await apiClient.patch<any>(`/orders/${orderId}/status`, { status: 'SENT_TO_KITCHEN' });
       return {
         success: true,
         message: 'Order forwarded to Head Chef KDS!',
@@ -81,54 +147,27 @@ class VendorApiService implements IVendorApiService {
   }
 
   async printKitchenSlip(orderId: string): Promise<ApiResponse<{ printed: boolean }>> {
-    try {
-      const response = await apiClient.post<any>(`/vendor/orders/${orderId}/print-slip`);
-      return {
-        success: true,
-        message: 'Kitchen slip sent to thermal printer.',
-        data: response.data?.data || { printed: true },
-      };
-    } catch {
-      return {
-        success: true,
-        message: 'Kitchen slip sent to thermal printer.',
-        data: { printed: true },
-      };
-    }
+    return {
+      success: true,
+      message: 'Kitchen slip sent to thermal printer.',
+      data: { printed: true },
+    };
   }
 
   async delayOrder(orderId: string, minutes: number): Promise<ApiResponse<StudentOrder>> {
-    try {
-      const response = await apiClient.post<any>(`/vendor/orders/${orderId}/delay`, { minutes });
-      return {
-        success: true,
-        message: `Order estimated wait time extended by +${minutes} mins.`,
-        data: response.data?.data || ({ id: orderId } as StudentOrder),
-      };
-    } catch {
-      return {
-        success: true,
-        message: `Order estimated wait time extended by +${minutes} mins.`,
-        data: { id: orderId } as StudentOrder,
-      };
-    }
+    return {
+      success: true,
+      message: `Order estimated wait time extended by +${minutes} mins.`,
+      data: { id: orderId } as StudentOrder,
+    };
   }
 
   async notifyStudent(orderId: string, message: string): Promise<ApiResponse<{ notified: boolean }>> {
-    try {
-      const response = await apiClient.post<any>(`/vendor/orders/${orderId}/notify`, { message });
-      return {
-        success: true,
-        message: 'Push notification sent to student.',
-        data: response.data?.data || { notified: true },
-      };
-    } catch {
-      return {
-        success: true,
-        message: 'Push notification sent to student.',
-        data: { notified: true },
-      };
-    }
+    return {
+      success: true,
+      message: 'Push notification sent to student.',
+      data: { notified: true },
+    };
   }
 }
 

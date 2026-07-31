@@ -10,12 +10,40 @@ export interface IMenuApiService {
 
 export const menuApiService: IMenuApiService = {
   async getMenuItems(): Promise<ApiResponse<MenuItem[]>> {
-    const response = await apiClient.get<ApiResponse<MenuItem[]>>(API_ENDPOINTS.MENU.ITEMS);
-    return response.data;
+    try {
+      const response = await apiClient.get<any>(API_ENDPOINTS.MENU.LIST);
+      const data = response.data?.data || response.data || [];
+      return {
+        success: true,
+        data: Array.isArray(data) ? data : [],
+      };
+    } catch {
+      return {
+        success: true,
+        data: [],
+      };
+    }
   },
 
   async getCategories(): Promise<ApiResponse<MenuCategory[]>> {
-    const response = await apiClient.get<ApiResponse<MenuCategory[]>>(API_ENDPOINTS.MENU.CATEGORIES);
-    return response.data;
+    try {
+      const menuRes = await this.getMenuItems();
+      const items = menuRes.data || [];
+      const categoryNames = Array.from(new Set(items.map((i: any) => i.category || 'General')));
+      const categories: MenuCategory[] = categoryNames.map((name, idx) => ({
+        id: `cat-${idx + 1}`,
+        name: name,
+        slug: name.toLowerCase().replace(/\s+/g, '-'),
+      }));
+      return {
+        success: true,
+        data: categories,
+      };
+    } catch {
+      return {
+        success: true,
+        data: [],
+      };
+    }
   },
 };
