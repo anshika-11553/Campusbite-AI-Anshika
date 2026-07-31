@@ -3,6 +3,9 @@ import { Geist, Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { ToastProvider } from '@/context/ToastContext';
+import { CartProvider } from '@/context/CartContext';
+import { OrderWorkflowProvider } from '@/context/OrderWorkflowContext';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { siteConfig } from '@/config/site';
 
@@ -31,7 +34,13 @@ export default function RootLayout({
       <body className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased selection:bg-emerald-100 selection:text-emerald-900">
         <ErrorBoundary>
           <ThemeProvider>
-            <AuthProvider>{children}</AuthProvider>
+            <AuthProvider>
+              <ToastProvider>
+                <CartProvider>
+                  <OrderWorkflowProvider>{children}</OrderWorkflowProvider>
+                </CartProvider>
+              </ToastProvider>
+            </AuthProvider>
           </ThemeProvider>
         </ErrorBoundary>
       </body>

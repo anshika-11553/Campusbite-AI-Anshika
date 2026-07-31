@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { UserRole } from '@/types/auth';
 import { RoleSelector } from './RoleSelector';
@@ -10,7 +11,7 @@ import { Alert } from '@/components/ui/Alert';
 import { useAuth } from '@/hooks/useAuth';
 import { isValidEmail, isValidPassword } from '@/utils/validators';
 import { sanitizeInput } from '@/utils/sanitizer';
-import { ROLE_ROUTE_MAP } from '@/constants/routes';
+import { ROUTES, ROLE_ROUTE_MAP } from '@/constants/routes';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
 export const LoginForm: React.FC = () => {
@@ -123,16 +124,12 @@ export const LoginForm: React.FC = () => {
           />
           Remember me
         </label>
-        <a
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            alert('Password reset instructions will be provided in future updates.');
-          }}
+        <Link
+          href={ROUTES.FORGOT_PASSWORD}
           className="font-medium text-[#054A36] hover:underline"
         >
           Forgot Password?
-        </a>
+        </Link>
       </div>
 
       <Button

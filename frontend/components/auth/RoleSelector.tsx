@@ -1,7 +1,7 @@
 import React from 'react';
 import { UserRole } from '@/types/auth';
 import { ROLE_METADATA_LIST } from '@/constants/roles';
-import { GraduationCap, Store, ShieldCheck, Crown } from 'lucide-react';
+import { GraduationCap, Store, ShieldCheck, ChefHat } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface RoleSelectorProps {
@@ -19,7 +19,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ selectedRole, onSele
       case 'admin':
         return <ShieldCheck className="h-4 w-4" />;
       case 'chief':
-        return <Crown className="h-4 w-4" />;
+        return <ChefHat className="h-4 w-4" />;
     }
   };
 

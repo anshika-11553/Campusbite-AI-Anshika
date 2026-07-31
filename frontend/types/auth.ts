@@ -16,6 +16,18 @@ export interface LoginCredentials {
   rememberMe?: boolean;
 }
 
+export interface RegisterPayload {
+  fullName: string;
+  email: string;
+  mobileNumber: string;
+  studentId: string;
+  department: string;
+  yearSemester: string;
+  password?: string;
+  role: UserRole;
+  profilePhotoUrl?: string;
+}
+
 export interface AuthState {
   user: AuthUser | null;
   role: UserRole | null;
