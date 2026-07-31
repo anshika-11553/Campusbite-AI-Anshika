@@ -230,7 +230,6 @@ export default function HomePage() {
             <span>— {siteConfig.tagline}</span>
           </div>
           <p>© {new Date().getFullYear()} CampusBite AI. All rights reserved.</p>
->>>>>>> feature/student-dashboard
         </div>
       </footer>
     </div>
