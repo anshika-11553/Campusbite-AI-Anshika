@@ -212,18 +212,33 @@ totalAmount = Number((totalAmount + subtotal).toFixed(2));
   // ==========================
   await createOrderItems(orderItemsToInsert);
 
+  // Helper for formatted token code (e.g. CB001)
+  const tokenCode = `CB${String(token.token_number).padStart(3, "0")}`;
+
+  // Calculate initial queue position
+  const activeQueue = await getVendorQueueData();
+  const queuePosition = activeQueue.length ? activeQueue.length : 1;
+
   // ==========================
   // Return Response
   // ==========================
   return {
     order_id: order.id,
     token_number: token.token_number,
+    token_code: tokenCode,
+    queue_position: queuePosition,
     total_amount: totalAmount,
     estimated_wait_minutes: estimatedWaitMinutes,
     status: order.status,
     created_at: order.created_at,
     items: orderItems,
   };
+};
+
+// Helper function to format token codes
+const formatTokenCode = (tokenNumber) => {
+  if (tokenNumber === null || tokenNumber === undefined) return null;
+  return `CB${String(tokenNumber).padStart(3, "0")}`;
 };
 
 // ==========================
@@ -234,16 +249,36 @@ export const getStudentOrderHistory = async (userId) => {
     throw new Error("User ID is required");
   }
 
-  const orders = await getOrdersByUser(userId);
+  const [orders, activeQueue] = await Promise.all([
+    getOrdersByUser(userId),
+    getVendorQueueData().catch(() => []),
+  ]);
 
-  return orders.map((order) => ({
-    id: order.id,
-    token_number: order.daily_tokens ? order.daily_tokens.token_number : null,
-    status: order.status,
-    total_amount: Number(order.total_amount),
-    created_at: order.created_at,
-    estimated_wait_minutes: order.estimated_wait_minutes,
-  }));
+  return orders.map((order) => {
+    const tokenNum = order.daily_tokens ? order.daily_tokens.token_number : null;
+    const tokenCode = formatTokenCode(tokenNum);
+
+    // Calculate queue position if active
+    let queuePosition = null;
+    if (["PAID", "ACCEPTED", "PREPARING"].includes(order.status)) {
+      const idx = activeQueue.findIndex((o) => o.id === order.id);
+      queuePosition = idx !== -1 ? idx + 1 : 1;
+    } else if (order.status === "READY") {
+      queuePosition = 0;
+    }
+
+    return {
+      id: order.id,
+      order_id: order.id,
+      token_number: tokenNum,
+      token_code: tokenCode,
+      queue_position: queuePosition,
+      status: order.status,
+      total_amount: Number(order.total_amount),
+      created_at: order.created_at,
+      estimated_wait_minutes: order.estimated_wait_minutes,
+    };
+  });
 };
 
 // ==========================
@@ -256,7 +291,10 @@ export const getStudentOrderDetails = async (orderId, userId) => {
     throw error;
   }
 
-  const order = await getOrderById(orderId);
+  const [order, activeQueue] = await Promise.all([
+    getOrderById(orderId),
+    getVendorQueueData().catch(() => []),
+  ]);
 
   if (!order) {
     const error = new Error("Order not found");
@@ -268,6 +306,17 @@ export const getStudentOrderDetails = async (orderId, userId) => {
     const error = new Error("Access denied to this order");
     error.statusCode = 403;
     throw error;
+  }
+
+  const tokenNum = order.daily_tokens ? order.daily_tokens.token_number : null;
+  const tokenCode = formatTokenCode(tokenNum);
+
+  let queuePosition = null;
+  if (["PAID", "ACCEPTED", "PREPARING"].includes(order.status)) {
+    const idx = activeQueue.findIndex((o) => o.id === order.id);
+    queuePosition = idx !== -1 ? idx + 1 : 1;
+  } else if (order.status === "READY") {
+    queuePosition = 0;
   }
 
   const items = (order.order_items || []).map((item) => ({
@@ -282,7 +331,9 @@ export const getStudentOrderDetails = async (orderId, userId) => {
 
   return {
     order_id: order.id,
-    token_number: order.daily_tokens ? order.daily_tokens.token_number : null,
+    token_number: tokenNum,
+    token_code: tokenCode,
+    queue_position: queuePosition,
     status: order.status,
     total_amount: Number(order.total_amount),
     estimated_wait_minutes: order.estimated_wait_minutes,
@@ -309,25 +360,30 @@ export const getVendorOrders = async () => {
     return new Date(a.created_at) - new Date(b.created_at);
   });
 
-  return orders.map((order) => ({
-    order_id: order.id,
-    token_number: order.daily_tokens ? order.daily_tokens.token_number : null,
-    student_name: order.users?.full_name || "Unknown Student",
-    student_email: order.users?.email || "Unknown Email",
-    total_amount: Number(order.total_amount),
-    estimated_wait_minutes: order.estimated_wait_minutes,
-    status: order.status,
-    created_at: order.created_at,
-    items: (order.order_items || []).map((item) => ({
-      menu_item_id: item.menu_items?.id || null,
-      menu_name: item.menu_items?.name || "Unknown Item",
-      category: item.menu_items?.category || null,
-      quantity: item.quantity,
-      unit_price: Number(item.unit_price),
-      subtotal: Number(item.subtotal),
-      prep_time: item.menu_items?.prep_time || 0,
-    })),
-  }));
+  return orders.map((order, index) => {
+    const tokenNum = order.daily_tokens ? order.daily_tokens.token_number : null;
+    return {
+      order_id: order.id,
+      token_number: tokenNum,
+      token_code: formatTokenCode(tokenNum),
+      queue_position: index + 1,
+      student_name: order.users?.full_name || "Unknown Student",
+      student_email: order.users?.email || "Unknown Email",
+      total_amount: Number(order.total_amount),
+      estimated_wait_minutes: order.estimated_wait_minutes,
+      status: order.status,
+      created_at: order.created_at,
+      items: (order.order_items || []).map((item) => ({
+        menu_item_id: item.menu_items?.id || null,
+        menu_name: item.menu_items?.name || "Unknown Item",
+        category: item.menu_items?.category || null,
+        quantity: item.quantity,
+        unit_price: Number(item.unit_price),
+        subtotal: Number(item.subtotal),
+        prep_time: item.menu_items?.prep_time || 0,
+      })),
+    };
+  });
 };
 
 // ==========================
@@ -437,15 +493,20 @@ export const getVendorQueue = async () => {
     return new Date(a.created_at) - new Date(b.created_at);
   });
 
-  return orders.map((order) => ({
-    order_id: order.id,
-    token_number: order.daily_tokens ? order.daily_tokens.token_number : null,
-    status: order.status,
-    estimated_wait_minutes: order.estimated_wait_minutes,
-    created_at: order.created_at,
-    customer_name: order.users?.full_name || "Unknown Customer",
-    total_amount: Number(order.total_amount),
-  }));
+  return orders.map((order, index) => {
+    const tokenNum = order.daily_tokens ? order.daily_tokens.token_number : null;
+    return {
+      order_id: order.id,
+      token_number: tokenNum,
+      token_code: formatTokenCode(tokenNum),
+      queue_position: index + 1,
+      status: order.status,
+      estimated_wait_minutes: order.estimated_wait_minutes,
+      created_at: order.created_at,
+      customer_name: order.users?.full_name || "Unknown Customer",
+      total_amount: Number(order.total_amount),
+    };
+  });
 };
 
 // ==========================

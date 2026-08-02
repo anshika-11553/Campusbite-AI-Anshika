@@ -7,11 +7,14 @@ import { ROLES } from "../constants/roles.js";
 export const createUser = async (userData) => {
   const { data, error } = await supabase
     .from("users")
-    .insert(userData)
+    .insert([userData])
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error("Create User Error:", error);
+    throw error;
+  }
 
   return data;
 };
@@ -38,16 +41,17 @@ export const createCampusUser = async ({
 export const getUserById = async (id) => {
   const { data, error } = await supabase
     .from("users")
-    .select(
-      `
+    .select(`
       *,
       roles(name)
-      `
-    )
+    `)
     .eq("id", id)
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error("Get User By ID Error:", error);
+    throw error;
+  }
 
   return data;
 };
@@ -58,16 +62,17 @@ export const getUserById = async (id) => {
 export const getUserByAuthId = async (authUserId) => {
   const { data, error } = await supabase
     .from("users")
-    .select(
-      `
+    .select(`
       *,
       roles(name)
-      `
-    )
+    `)
     .eq("auth_user_id", authUserId)
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error("Get User By Auth ID Error:", error);
+    throw error;
+  }
 
   return data;
 };

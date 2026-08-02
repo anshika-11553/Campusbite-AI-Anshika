@@ -26,11 +26,18 @@ export const registerController = async (req, res) => {
       data: result,
     });
   } catch (error) {
-    console.error("Register Error:", error);
+    console.error("========== REGISTER ERROR ==========");
+    console.error("Message:", error.message);
+    console.error("Code:", error.code);
+    console.error("Details:", error.details);
+    console.error("Hint:", error.hint);
+    console.error("Full Error:", error);
 
-    return res.status(500).json({
+    return res.status(error.status || 500).json({
       success: false,
       message: error.message,
+      code: error.code || null,
+      details: error.details || null,
     });
   }
 };
@@ -60,11 +67,18 @@ export const loginController = async (req, res) => {
       data: result,
     });
   } catch (error) {
-    console.error("Login Error:", error);
+    console.error("========== LOGIN ERROR ==========");
+    console.error("Message:", error.message);
+    console.error("Code:", error.code);
+    console.error("Details:", error.details);
+    console.error("Hint:", error.hint);
+    console.error("Full Error:", error);
 
-    return res.status(500).json({
+    return res.status(error.status || 500).json({
       success: false,
       message: error.message,
+      code: error.code || null,
+      details: error.details || null,
     });
   }
 };
@@ -80,7 +94,8 @@ export const profileController = async (req, res) => {
       data: req.user,
     });
   } catch (error) {
-    console.error("Profile Error:", error);
+    console.error("========== PROFILE ERROR ==========");
+    console.error(error);
 
     return res.status(500).json({
       success: false,
