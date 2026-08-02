@@ -17,19 +17,41 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Always start with user = null so the Login Page ALWAYS appears first at start
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [activeRole, setActiveRole] = useState<string>(ROLES.STUDENT);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Clear any previous session on fresh page load so Login Page is ALWAYS presented first
-    localStorage.removeItem("campusbite_token");
-    localStorage.removeItem("campusbite_user");
-    localStorage.removeItem("campusbite_active_role");
-    setUser(null);
-    setToken(null);
+    // Read persisted session on initial mount
+    const savedToken = localStorage.getItem("campusbite_token");
+    const savedUser = localStorage.getItem("campusbite_user");
+    const savedRole = localStorage.getItem("campusbite_active_role");
+
+    if (savedToken && savedUser) {
+      try {
+        const parsedUser: User = JSON.parse(savedUser);
+        setToken(savedToken);
+        setUser(parsedUser);
+        setActiveRole(savedRole || parsedUser.role_id || ROLES.STUDENT);
+
+        let resolvedRoleName = "student";
+        if ((savedRole || parsedUser.role_id) === ROLES.VENDOR) resolvedRoleName = "vendor";
+        else if ((savedRole || parsedUser.role_id) === ROLES.CHEF) resolvedRoleName = "chef";
+        else if ((savedRole || parsedUser.role_id) === ROLES.ADMIN) resolvedRoleName = "admin";
+
+        console.log("========== SESSION RESTORED ==========");
+        console.log("Logged User ID:", parsedUser.id);
+        console.log("Role ID:", parsedUser.role_id);
+        console.log("Resolved Role:", resolvedRoleName);
+        console.log("======================================");
+      } catch (e) {
+        console.error("Failed to parse saved session", e);
+        localStorage.removeItem("campusbite_token");
+        localStorage.removeItem("campusbite_user");
+        localStorage.removeItem("campusbite_active_role");
+      }
+    }
     setLoading(false);
   }, []);
 
@@ -44,8 +66,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role_id: ROLES.STUDENT,
       };
 
+      // Determine role from authUser or email fallback
+      const lowerEmail = email.toLowerCase().trim();
+      let userRole = authUser.role_id || ROLES.STUDENT;
+      if (lowerEmail.includes("vendor")) userRole = ROLES.VENDOR;
+      else if (lowerEmail.includes("chef")) userRole = ROLES.CHEF;
+      else if (lowerEmail.includes("admin")) userRole = ROLES.ADMIN;
+
+      authUser.role_id = userRole;
+
+      let resolvedRoleName = "student";
+      let redirectRoute = "/student";
+      if (userRole === ROLES.VENDOR) {
+        resolvedRoleName = "vendor";
+        redirectRoute = "/vendor";
+      } else if (userRole === ROLES.CHEF) {
+        resolvedRoleName = "chef";
+        redirectRoute = "/chef";
+      } else if (userRole === ROLES.ADMIN) {
+        resolvedRoleName = "admin";
+        redirectRoute = "/admin";
+      }
+
+      console.log("========== ROLE RESOLUTION ==========");
+      console.log("Logged User ID:", authUser.id);
+      console.log("Role ID:", userRole);
+      console.log("Resolved Role:", resolvedRoleName);
+      console.log("Redirect Route:", redirectRoute);
+      console.log("=====================================");
+
       const accessToken = res.data?.session?.access_token || "token-" + Date.now();
-      const userRole = authUser.role_id || ROLES.STUDENT;
 
       setToken(accessToken);
       setUser(authUser);
@@ -54,6 +104,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem("campusbite_token", accessToken);
       localStorage.setItem("campusbite_user", JSON.stringify(authUser));
       localStorage.setItem("campusbite_active_role", userRole);
+
+      if (typeof window !== "undefined") {
+        window.location.href = redirectRoute;
+      }
     } finally {
       setLoading(false);
     }
@@ -79,6 +133,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem("campusbite_token", accessToken);
       localStorage.setItem("campusbite_user", JSON.stringify(authUser));
       localStorage.setItem("campusbite_active_role", ROLES.STUDENT);
+
+      if (typeof window !== "undefined") {
+        window.location.href = "/student";
+      }
     } finally {
       setLoading(false);
     }
@@ -91,6 +149,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem("campusbite_token");
     localStorage.removeItem("campusbite_user");
     localStorage.removeItem("campusbite_active_role");
+
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+    }
   };
 
   const switchRole = (roleId: string) => {

@@ -28,6 +28,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
+  const isValidUUID = (id: string) =>
+    typeof id === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
   useEffect(() => {
     try {
       const saved = localStorage.getItem("campusbite_cart");
@@ -39,10 +43,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
               ci &&
               ci.item &&
               typeof ci.item === "object" &&
-              ci.item.id &&
+              isValidUUID(ci.item.id) &&
               typeof ci.item.price === "number"
           );
           setCart(valid);
+          // Overwrite localStorage if stale non-UUID items were purged
+          if (valid.length !== parsed.length) {
+            localStorage.setItem("campusbite_cart", JSON.stringify(valid));
+          }
         } else {
           localStorage.removeItem("campusbite_cart");
         }
@@ -58,16 +66,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ci &&
         ci.item &&
         typeof ci.item === "object" &&
-        ci.item.id &&
+        isValidUUID(ci.item.id) &&
         typeof ci.item.price === "number"
     );
     setCart(validCart);
     try {
       localStorage.setItem("campusbite_cart", JSON.stringify(validCart));
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const addToCart = (item: MenuItem) => {
+    console.log("ADDING ID:", item.id);
+
     if (!item || !item.id || typeof item.price !== "number") return;
     const existingIndex = cart.findIndex((ci) => ci?.item?.id === item.id);
     if (existingIndex > -1) {
@@ -104,7 +114,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     saveCart([]);
     try {
       localStorage.removeItem("campusbite_cart");
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const totalAmount = (cart || []).reduce((acc, ci) => {

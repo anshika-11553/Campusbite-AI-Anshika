@@ -4,28 +4,30 @@ export const authorizeRoles = (...allowedRoleIds) => {
       if (!req.user) {
         return res.status(401).json({
           success: false,
-          message: "Unauthorized",
+          message: "Authentication required",
+          errorCode: "UNAUTHORIZED",
+          timestamp: new Date().toISOString(),
         });
       }
-
-      console.log("========== ROLE DEBUG ==========");
-      console.log("User Role ID:", req.user.role_id);
-      console.log("Allowed Role IDs:", allowedRoleIds);
 
       if (!allowedRoleIds.includes(req.user.role_id)) {
         return res.status(403).json({
           success: false,
-          message: "Access denied",
+          message: "Access denied: insufficient permissions for this resource",
+          errorCode: "FORBIDDEN",
+          timestamp: new Date().toISOString(),
         });
       }
 
       next();
     } catch (error) {
-      console.error(error);
+      console.error("Role authorization notice:", error.message);
 
-      return res.status(500).json({
+      return res.status(403).json({
         success: false,
-        message: error.message,
+        message: "Authorization check failed",
+        errorCode: "FORBIDDEN",
+        timestamp: new Date().toISOString(),
       });
     }
   };

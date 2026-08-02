@@ -18,7 +18,7 @@ const router = express.Router();
 router.get(
   "/orders",
   authenticateUser,
-  authorizeRoles(ROLES.VENDOR, ROLES.CHIEF, ROLES.ADMIN),
+  authorizeRoles(ROLES.VENDOR, ROLES.CHEF, ROLES.ADMIN),
   getVendorOrdersController
 );
 
@@ -48,7 +48,7 @@ router.get(
 router.get(
   "/queue",
   authenticateUser,
-  authorizeRoles(ROLES.VENDOR, ROLES.CHIEF, ROLES.ADMIN),
+  authorizeRoles(ROLES.VENDOR, ROLES.CHEF, ROLES.ADMIN),
   getVendorQueueController
 );
 

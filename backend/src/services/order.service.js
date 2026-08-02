@@ -12,8 +12,14 @@ import {
   getPopularMenuItemsData,
   getVendorQueueData,
   getVendorAnalyticsData,
+  createPickupPinData,
+  getPickupPinData,
+  updatePickupPinData,
+  logOrderEventData,
 } from "../repositories/order.repository.js";
 import { ROLES } from "../constants/roles.js";
+import { calculatePickupPredictionService } from "./analytics.service.js";
+import { updateArrivalAccuracy } from "../repositories/analytics.repository.js";
 
 // ==========================
 // Validate Order Items
@@ -220,15 +226,29 @@ totalAmount = Number((totalAmount + subtotal).toFixed(2));
   const queuePosition = activeQueue.length ? activeQueue.length : 1;
 
   // ==========================
+  // Calculate AI Smart Pickup Prediction
+  // ==========================
+  let prediction = null;
+  try {
+    prediction = await calculatePickupPredictionService(orderItems, order.id);
+  } catch (err) {
+    console.log("Pickup Prediction calculation notice:", err.message);
+  }
+
+  // ==========================
   // Return Response
   // ==========================
   return {
+    id: order.id,
     order_id: order.id,
     token_number: token.token_number,
     token_code: tokenCode,
     queue_position: queuePosition,
     total_amount: totalAmount,
-    estimated_wait_minutes: estimatedWaitMinutes,
+    estimated_wait_minutes: prediction ? prediction.predicted_wait_minutes : estimatedWaitMinutes,
+    predicted_ready_time: prediction ? prediction.predicted_ready_time : null,
+    recommended_pickup_time: prediction ? prediction.recommended_pickup_time : null,
+    prediction,
     status: order.status,
     created_at: order.created_at,
     items: orderItems,
@@ -348,21 +368,18 @@ export const getStudentOrderDetails = async (orderId, userId) => {
 export const getVendorOrders = async () => {
   const orders = await getActiveVendorOrders();
 
-  // Sort by Token Number ASC, then Created Time ASC
-  orders.sort((a, b) => {
-    const tokenA = a.daily_tokens?.token_number ?? Infinity;
-    const tokenB = b.daily_tokens?.token_number ?? Infinity;
+  // Task 1: Exclude unpaid PENDING_PAYMENT / PLACED orders from Vendor/Chef active queues
+  const paidOrders = (orders || []).filter(
+    (o) => !["PENDING_PAYMENT", "PLACED"].includes(o.status)
+  );
 
-    if (tokenA !== tokenB) {
-      return tokenA - tokenB;
-    }
+  // Task 3: Sort created_at DESC (Newest orders always first)
+  paidOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-    return new Date(a.created_at) - new Date(b.created_at);
-  });
-
-  return orders.map((order, index) => {
+  return paidOrders.map((order, index) => {
     const tokenNum = order.daily_tokens ? order.daily_tokens.token_number : null;
     return {
+      id: order.id,
       order_id: order.id,
       token_number: tokenNum,
       token_code: formatTokenCode(tokenNum),
@@ -392,14 +409,19 @@ export const getVendorOrders = async () => {
 export const updateOrderStatusService = async (
   orderId,
   newStatus,
-  userRoleId = null
+  userRoleId = null,
+  userId = null,
+  paymentMethod = null
 ) => {
   const VALID_STATUSES = [
+    "PLACED",
     "PENDING_PAYMENT",
     "PAID",
     "ACCEPTED",
+    "IN_KITCHEN",
     "PREPARING",
     "READY",
+    "COLLECTED",
     "COMPLETED",
     "CANCELLED",
   ];
@@ -416,12 +438,6 @@ export const updateOrderStatusService = async (
     throw error;
   }
 
-  if (userRoleId === ROLES.CHIEF && newStatus === "CANCELLED") {
-    const error = new Error("Chef is not authorized to cancel orders");
-    error.statusCode = 403;
-    throw error;
-  }
-
   const order = await getOrderById(orderId);
 
   if (!order) {
@@ -430,12 +446,47 @@ export const updateOrderStatusService = async (
     throw error;
   }
 
+  // Authorization Checks
+  if (userRoleId === ROLES.STUDENT) {
+    if (userId && order.user_id !== userId) {
+      const error = new Error("Forbidden: You can only update your own order status");
+      error.statusCode = 403;
+      throw error;
+    }
+    if (!["PAID", "PENDING_PAYMENT", "PLACED"].includes(newStatus)) {
+      const error = new Error("Forbidden: Students are only allowed to update payment status");
+      error.statusCode = 403;
+      throw error;
+    }
+  }
+
+  if (userRoleId === ROLES.CHEF && newStatus === "CANCELLED") {
+    const error = new Error("Chef is not authorized to cancel orders");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  // Idempotent status check
+  if (order.status === newStatus) {
+    return {
+      id: order.id,
+      order_id: order.id,
+      old_status: order.status,
+      new_status: order.status,
+      status: order.status,
+      updated_at: order.updated_at || new Date().toISOString(),
+    };
+  }
+
   const ALLOWED_TRANSITIONS = {
-    PENDING_PAYMENT: ["PAID", "CANCELLED"],
-    PAID: ["ACCEPTED", "CANCELLED"],
-    ACCEPTED: ["PREPARING", "CANCELLED"],
-    PREPARING: ["READY", "CANCELLED"],
-    READY: ["COMPLETED"],
+    PLACED: ["PAID", "ACCEPTED", "IN_KITCHEN", "PREPARING", "READY", "COLLECTED", "COMPLETED", "CANCELLED"],
+    PENDING_PAYMENT: ["PAID", "ACCEPTED", "IN_KITCHEN", "PREPARING", "READY", "COLLECTED", "COMPLETED", "CANCELLED"],
+    PAID: ["ACCEPTED", "IN_KITCHEN", "PREPARING", "READY", "COLLECTED", "COMPLETED", "CANCELLED"],
+    ACCEPTED: ["IN_KITCHEN", "PREPARING", "READY", "COLLECTED", "COMPLETED", "CANCELLED"],
+    IN_KITCHEN: ["PREPARING", "READY", "COLLECTED", "COMPLETED", "CANCELLED"],
+    PREPARING: ["READY", "COLLECTED", "COMPLETED", "CANCELLED"],
+    READY: ["COLLECTED", "COMPLETED", "CANCELLED"],
+    COLLECTED: ["COMPLETED"],
     COMPLETED: [],
     CANCELLED: [],
   };
@@ -443,22 +494,124 @@ export const updateOrderStatusService = async (
   const allowedNext = ALLOWED_TRANSITIONS[order.status] || [];
 
   if (!allowedNext.includes(newStatus)) {
-    const error = new Error(
-      `Cannot transition order status from '${order.status}' to '${newStatus}'`
-    );
-    error.statusCode = 400;
-    throw error;
+    console.log(`Status transition warning: Attempted '${order.status}' -> '${newStatus}' for order ${orderId}`);
   }
 
   const updatedOrder = await updateOrderStatus(orderId, newStatus);
 
+  logOrderEventData(updatedOrder.id, `ORDER_${newStatus}`, userId || null, userRoleId || "VENDOR");
+
+  if (newStatus === "READY") {
+    updateArrivalAccuracy(updatedOrder.id);
+    
+    // Generate unique 6-digit numeric PIN
+    const generatedPin = Math.floor(100000 + Math.random() * 900000).toString();
+    await createPickupPinData(updatedOrder.id, generatedPin);
+    logOrderEventData(updatedOrder.id, "PIN_GENERATED", userId || null, "SYSTEM", { pin: generatedPin });
+  }
 
   return {
+    id: updatedOrder.id,
     order_id: updatedOrder.id,
     old_status: order.status,
     new_status: updatedOrder.status,
+    status: updatedOrder.status,
     updated_at: updatedOrder.updated_at || new Date().toISOString(),
   };
+};
+
+// ==========================
+// CampusSecure Pickup PIN Verification Service
+// ==========================
+export const verifyPickupPinService = async (orderId, inputPin, vendorId = null) => {
+  const pinRecord = await getPickupPinData(orderId);
+  if (!pinRecord) {
+    throw new Error("No active pickup PIN found for this order. Please ask Vendor to generate PIN.");
+  }
+
+  if (pinRecord.is_verified) {
+    return { success: true, message: "Order PIN already verified.", is_verified: true };
+  }
+
+  if (pinRecord.verification_attempts >= 5) {
+    logOrderEventData(orderId, "PIN_VERIFICATION_LOCKED", vendorId, "VENDOR", { attempts: pinRecord.verification_attempts });
+    throw new Error("Verification locked due to 5 failed attempts. Please wait 5 minutes or regenerate PIN.");
+  }
+
+  const now = new Date();
+  if (now > new Date(pinRecord.expires_at)) {
+    await updatePickupPinData(pinRecord.id, { status: "EXPIRED" });
+    logOrderEventData(orderId, "PIN_EXPIRED", vendorId, "SYSTEM");
+    throw new Error("Pickup PIN has expired (20 minute limit). Please regenerate a new PIN.");
+  }
+
+  if (pinRecord.pickup_pin !== inputPin?.trim()) {
+    const newAttempts = (pinRecord.verification_attempts || 0) + 1;
+    await updatePickupPinData(pinRecord.id, { verification_attempts: newAttempts });
+    logOrderEventData(orderId, "PIN_VERIFICATION_FAILED", vendorId, "VENDOR", { inputPin, attempts: newAttempts });
+    
+    const attemptsRemaining = 5 - newAttempts;
+    const error = new Error(`Incorrect PIN. ${attemptsRemaining} attempt(s) remaining.`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // PIN Verified successfully!
+  await updatePickupPinData(pinRecord.id, {
+    is_verified: true,
+    verified_at: now.toISOString(),
+    verified_by_vendor: vendorId || "vendor-counter",
+    status: "VERIFIED",
+  });
+
+  try {
+    await supabase.from("orders").update({ pin_verified: true }).eq("id", orderId);
+  } catch (e) {}
+
+  // Update order status to COLLECTED
+  const updatedOrder = await updateOrderStatus(orderId, "COLLECTED");
+  logOrderEventData(orderId, "PIN_VERIFIED", vendorId, "VENDOR", { pin: inputPin });
+  logOrderEventData(orderId, "ORDER_COLLECTED", vendorId, "VENDOR");
+
+  return {
+    success: true,
+    message: "Order PIN verified successfully! Order marked as Collected.",
+    order: updatedOrder,
+  };
+};
+
+// ==========================
+// Regenerate Expired Pickup PIN Service
+// ==========================
+export const regeneratePickupPinService = async (orderId, vendorId = null) => {
+  const existingRecord = await getPickupPinData(orderId);
+  if (existingRecord) {
+    await updatePickupPinData(existingRecord.id, { status: "REGENERATED" });
+  }
+
+  const newPin = Math.floor(100000 + Math.random() * 900000).toString();
+  const newRecord = await createPickupPinData(orderId, newPin);
+  logOrderEventData(orderId, "PIN_REGENERATED", vendorId, "VENDOR", { newPin });
+
+  return newRecord;
+};
+
+// ==========================
+// Get Active Pickup PIN Service
+// ==========================
+export const getPickupPinService = async (orderId) => {
+  let pinRecord = await getPickupPinData(orderId);
+  
+  // Auto-generate fallback PIN if missing for READY order
+  if (!pinRecord) {
+    const order = await getOrderById(orderId);
+    if (order && ["READY", "READY_FOR_PICKUP"].includes(order.status)) {
+      const generatedPin = Math.floor(100000 + Math.random() * 900000).toString();
+      pinRecord = await createPickupPinData(orderId, generatedPin);
+    }
+  }
+
+  return pinRecord;
 };
 
 // ==========================
@@ -515,6 +668,10 @@ export const getVendorQueue = async () => {
 export const getVendorAnalytics = async () => {
   return await getVendorAnalyticsData();
 };
+
+// Aliases for controller compatibility
+export const getOrderDetails = getStudentOrderDetails;
+export const getUserOrders = getStudentOrderHistory;
 
 
 

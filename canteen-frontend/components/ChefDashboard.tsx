@@ -22,7 +22,7 @@ export const ChefDashboard: React.FC = () => {
     loadKitchenQueue();
     const interval = setInterval(() => {
       loadKitchenQueue(true);
-    }, 8000);
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 
@@ -31,8 +31,11 @@ export const ChefDashboard: React.FC = () => {
     try {
       const allOrders: Order[] = await api.getVendorOrders();
       const kitchenOrders = (allOrders || []).filter((o: Order) =>
-        ["ACCEPTED", "PREPARING", "READY"].includes(o.status)
+        ["IN_KITCHEN", "ACCEPTED", "PREPARING", "READY"].includes(o.status)
       );
+      if (kitchenOrders.length > 0) {
+        console.log("Chef received order:", kitchenOrders[0]);
+      }
       setOrders(kitchenOrders);
     } catch (e) {
       console.error("Failed to load kitchen queue", e);
@@ -41,10 +44,18 @@ export const ChefDashboard: React.FC = () => {
     }
   };
 
-  const handleChefAction = async (orderId: string, targetStatus: string) => {
+  const handleChefAction = async (orderId: string | undefined, targetStatus: string) => {
+    if (!orderId) {
+      console.error("CRITICAL ERROR: Chef action triggered with undefined orderId");
+      alert("Error: Missing order ID");
+      return;
+    }
+
+    console.log("Chef action target UUID:", orderId, "-> status:", targetStatus);
+
     try {
       await api.updateOrderStatus(orderId, targetStatus);
-      setLastActionMsg(`Token #${orderId.slice(-4)} marked as ${targetStatus}!`);
+      setLastActionMsg(`Order status updated to ${targetStatus}!`);
       setTimeout(() => setLastActionMsg(null), 3000);
       loadKitchenQueue(true);
     } catch (e: any) {
@@ -52,8 +63,8 @@ export const ChefDashboard: React.FC = () => {
     }
   };
 
+  const inKitchenOrders = (orders || []).filter((o) => ["IN_KITCHEN", "ACCEPTED"].includes(o.status));
   const preparingOrders = (orders || []).filter((o) => o.status === "PREPARING");
-  const acceptedOrders = (orders || []).filter((o) => o.status === "ACCEPTED");
   const readyOrders = (orders || []).filter((o) => o.status === "READY");
 
   return (
@@ -103,47 +114,50 @@ export const ChefDashboard: React.FC = () => {
               <span>Incoming Queue</span>
             </h3>
             <span className="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-black text-xs">
-              {acceptedOrders.length}
+              {inKitchenOrders.length}
             </span>
           </div>
 
           <div className="space-y-4">
-            {acceptedOrders.map((ord) => (
-              <div
-                key={ord.id}
-                className="bg-white border border-indigo-200 rounded-3xl p-5 space-y-4 shadow-sm"
-              >
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 block uppercase">Token</span>
-                    <span className="text-3xl font-black text-indigo-700">#{ord.token_number || "--"}</span>
-                  </div>
-                  <span className="text-xs font-semibold text-slate-500">
-                    Est. {ord.estimated_wait_minutes || 10}m
-                  </span>
-                </div>
-
-                <div className="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                  {(ord.items || []).map((it, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-xs">
-                      <span className="text-slate-900 font-extrabold">
-                        {it.quantity}x {it.menu_name}
-                      </span>
-                      <span className="text-slate-400 text-[10px]">{it.category}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => handleChefAction(ord.id, "PREPARING")}
-                  className="w-full py-3 rounded-xl bg-[#fc8019] hover:bg-[#e5700e] text-white font-black text-xs shadow-md flex items-center justify-center gap-2 transition-all"
+            {inKitchenOrders.map((ord) => {
+              const realOrderId = ord.id || ord.order_id;
+              return (
+                <div
+                  key={realOrderId || Math.random()}
+                  className="bg-white border border-indigo-200 rounded-3xl p-5 space-y-4 shadow-sm"
                 >
-                  <Flame className="w-4 h-4" />
-                  <span>Start Preparing Now</span>
-                </button>
-              </div>
-            ))}
-            {acceptedOrders.length === 0 && (
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 block uppercase">Token</span>
+                      <span className="text-3xl font-black text-indigo-700">#{ord.token_number || "--"}</span>
+                    </div>
+                    <span className="text-xs font-semibold text-slate-500">
+                      Est. {ord.estimated_wait_minutes || 10}m
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    {(ord.items || []).map((it, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-xs">
+                        <span className="text-slate-900 font-extrabold">
+                          {it.quantity}x {it.menu_name}
+                        </span>
+                        <span className="text-slate-400 text-[10px]">{it.category}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => handleChefAction(realOrderId, "PREPARING")}
+                    className="w-full py-3 rounded-xl bg-[#fc8019] hover:bg-[#e5700e] text-white font-black text-xs shadow-md flex items-center justify-center gap-2 transition-all"
+                  >
+                    <Flame className="w-4 h-4" />
+                    <span>Start Preparing Now</span>
+                  </button>
+                </div>
+              );
+            })}
+            {inKitchenOrders.length === 0 && (
               <div className="text-center py-10 bg-white border border-slate-200 rounded-2xl text-xs text-slate-400 font-medium">
                 No orders waiting for prep start.
               </div>
@@ -164,40 +178,43 @@ export const ChefDashboard: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            {preparingOrders.map((ord) => (
-              <div
-                key={ord.id}
-                className="bg-white border-2 border-orange-300 rounded-3xl p-5 space-y-4 shadow-md"
-              >
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div>
-                    <span className="text-[10px] font-bold text-[#fc8019] block uppercase">COOKING TOKEN</span>
-                    <span className="text-4xl font-black text-slate-900">#{ord.token_number || "--"}</span>
-                  </div>
-                  <span className="px-2.5 py-1 text-[10px] font-bold bg-orange-100 text-[#fc8019] border border-orange-300 rounded-full animate-pulse">
-                    On Stove 🔥
-                  </span>
-                </div>
-
-                <div className="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                  {(ord.items || []).map((it, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-xs">
-                      <span className="text-slate-900 font-extrabold text-sm">
-                        {it.quantity}x {it.menu_name}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => handleChefAction(ord.id, "READY")}
-                  className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md flex items-center justify-center gap-2 transition-all active:scale-95"
+            {preparingOrders.map((ord) => {
+              const realOrderId = ord.id || ord.order_id;
+              return (
+                <div
+                  key={realOrderId || Math.random()}
+                  className="bg-white border-2 border-orange-300 rounded-3xl p-5 space-y-4 shadow-md"
                 >
-                  <BellRing className="w-4 h-4" />
-                  <span>Mark Ready & Placed at Counter 🔔</span>
-                </button>
-              </div>
-            ))}
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div>
+                      <span className="text-[10px] font-bold text-[#fc8019] block uppercase">COOKING TOKEN</span>
+                      <span className="text-4xl font-black text-slate-900">#{ord.token_number || "--"}</span>
+                    </div>
+                    <span className="px-2.5 py-1 text-[10px] font-bold bg-orange-100 text-[#fc8019] border border-orange-300 rounded-full animate-pulse">
+                      On Stove 🔥
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    {(ord.items || []).map((it, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-xs">
+                        <span className="text-slate-900 font-extrabold text-sm">
+                          {it.quantity}x {it.menu_name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => handleChefAction(realOrderId, "READY")}
+                    className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md flex items-center justify-center gap-2 transition-all active:scale-95"
+                  >
+                    <BellRing className="w-4 h-4" />
+                    <span>Mark Ready & Placed at Counter 🔔</span>
+                  </button>
+                </div>
+              );
+            })}
             {preparingOrders.length === 0 && (
               <div className="text-center py-10 bg-white border border-slate-200 rounded-2xl text-xs text-slate-400 font-medium">
                 No orders currently cooking on stove.

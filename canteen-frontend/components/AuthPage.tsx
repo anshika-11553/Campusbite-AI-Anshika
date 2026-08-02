@@ -94,7 +94,7 @@ export const AuthPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
               <button
                 type="button"
-                onClick={() => fillCredentialsOnly("student@gmail.com", "1234")}
+                onClick={() => fillCredentialsOnly("student@campusbite.ai", "123456")}
                 className="p-2.5 rounded-xl bg-white border border-slate-200 hover:border-orange-400 text-left transition-all group flex items-center justify-between shadow-sm"
               >
                 <div>
@@ -102,8 +102,8 @@ export const AuthPage: React.FC = () => {
                     <GraduationCap className="w-3.5 h-3.5 text-[#fc8019]" />
                     <span>Student Profile</span>
                   </div>
-                  <div className="text-[10px] text-slate-500 font-mono">student@gmail.com</div>
-                  <div className="text-[10px] text-slate-400 font-mono">Pass: 1234</div>
+                  <div className="text-[10px] text-slate-500 font-mono">student@campusbite.ai</div>
+                  <div className="text-[10px] text-slate-400 font-mono">Pass: 123456</div>
                 </div>
                 <span className="text-[10px] font-extrabold text-[#fc8019] opacity-0 group-hover:opacity-100 transition-opacity">
                   Fill ↵
@@ -112,7 +112,7 @@ export const AuthPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => fillCredentialsOnly("vendor@gmail.com", "1234")}
+                onClick={() => fillCredentialsOnly("vendor@campusbite.ai", "123456")}
                 className="p-2.5 rounded-xl bg-white border border-slate-200 hover:border-emerald-500 text-left transition-all group flex items-center justify-between shadow-sm"
               >
                 <div>
@@ -120,8 +120,8 @@ export const AuthPage: React.FC = () => {
                     <Store className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Vendor Profile</span>
                   </div>
-                  <div className="text-[10px] text-slate-500 font-mono">vendor@gmail.com</div>
-                  <div className="text-[10px] text-slate-400 font-mono">Pass: 1234</div>
+                  <div className="text-[10px] text-slate-500 font-mono">vendor@campusbite.ai</div>
+                  <div className="text-[10px] text-slate-400 font-mono">Pass: 123456</div>
                 </div>
                 <span className="text-[10px] font-extrabold text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity">
                   Fill ↵
@@ -130,7 +130,7 @@ export const AuthPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => fillCredentialsOnly("chef@gmail.com", "1234")}
+                onClick={() => fillCredentialsOnly("chef@campusbite.ai", "123456")}
                 className="p-2.5 rounded-xl bg-white border border-slate-200 hover:border-amber-500 text-left transition-all group flex items-center justify-between shadow-sm"
               >
                 <div>
@@ -138,8 +138,8 @@ export const AuthPage: React.FC = () => {
                     <ChefHat className="w-3.5 h-3.5 text-amber-600" />
                     <span>Chef Profile</span>
                   </div>
-                  <div className="text-[10px] text-slate-500 font-mono">chef@gmail.com</div>
-                  <div className="text-[10px] text-slate-400 font-mono">Pass: 1234</div>
+                  <div className="text-[10px] text-slate-500 font-mono">chef@campusbite.ai</div>
+                  <div className="text-[10px] text-slate-400 font-mono">Pass: 123456</div>
                 </div>
                 <span className="text-[10px] font-extrabold text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity">
                   Fill ↵
@@ -148,7 +148,7 @@ export const AuthPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => fillCredentialsOnly("admin@gmail.com", "1234")}
+                onClick={() => fillCredentialsOnly("admin@campusbite.ai", "123456")}
                 className="p-2.5 rounded-xl bg-white border border-slate-200 hover:border-purple-500 text-left transition-all group flex items-center justify-between shadow-sm"
               >
                 <div>
@@ -156,8 +156,8 @@ export const AuthPage: React.FC = () => {
                     <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
                     <span>Admin Profile</span>
                   </div>
-                  <div className="text-[10px] text-slate-500 font-mono">admin@gmail.com</div>
-                  <div className="text-[10px] text-slate-400 font-mono">Pass: 1234</div>
+                  <div className="text-[10px] text-slate-500 font-mono">admin@campusbite.ai</div>
+                  <div className="text-[10px] text-slate-400 font-mono">Pass: 123456</div>
                 </div>
                 <span className="text-[10px] font-extrabold text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity">
                   Fill ↵

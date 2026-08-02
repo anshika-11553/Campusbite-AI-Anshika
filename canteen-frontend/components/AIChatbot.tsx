@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { ROLES } from "@/lib/api";
+import { ROLES, api } from "@/lib/api";
 import {
   MessageSquare,
   Sparkles,
@@ -52,32 +52,35 @@ export const AIChatbot: React.FC = () => {
     switch (roleId) {
       case ROLES.VENDOR:
         return [
-          "📊 What is today's revenue forecast?",
-          "🔥 Which item is selling fastest right now?",
-          "⏰ When is the next peak rush hour?",
+          "👨‍🍳 What should I prepare first?",
+          "🔥 What item is running most today?",
+          "💰 What is today's revenue?",
         ];
       case ROLES.CHEF:
         return [
-          "🍳 What token should I prepare first?",
-          "⏱️ Show prep time for Chole Bhature",
-          "🔔 Any orders waiting at counter?",
+          "🍳 What should I cook next?",
+          "⏱️ What is average cook time?",
         ];
       case ROLES.ADMIN:
         return [
-          "🛡️ System health status report",
-          "📈 Active orders across campus",
-          "👑 Most active user roles today",
+          "📊 Today's Summary",
+          "🏛️ Which stall is overloaded?",
+          "🛡️ Is the system healthy?",
+          "🚨 Operational alerts",
+          "👑 Most profitable menu",
         ];
       default:
         return [
-          "🚀 What should I order for lunch?",
-          "💪 High protein meal under ₹100",
-          "👥 How do I create a group order token?",
+          "🎯 What is my queue position?",
+          "⚡ Which stall has the shortest queue?",
+          "💰 What should I eat under ₹100?",
+          "💪 Suggest high protein food",
+          "⚡ Recommend the fastest available meal",
         ];
     }
   }
 
-  const handleSend = (textToSend?: string) => {
+  const handleSend = async (textToSend?: string) => {
     const query = textToSend || input;
     if (!query.trim()) return;
 
@@ -92,8 +95,8 @@ export const AIChatbot: React.FC = () => {
     if (!textToSend) setInput("");
     setIsTyping(true);
 
-    setTimeout(() => {
-      const botResponseText = generateAIResponse(query, activeRole);
+    try {
+      const botResponseText = await api.askChatbot(query, activeRole);
       const botMsg: Message = {
         id: "bot-" + Date.now(),
         sender: "bot",
@@ -101,64 +104,18 @@ export const AIChatbot: React.FC = () => {
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, botMsg]);
+    } catch (e) {
+      const botMsg: Message = {
+        id: "bot-" + Date.now(),
+        sender: "bot",
+        text: "⚡ Connected to CampusBite AI Intelligence Engine.",
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, botMsg]);
+    } finally {
       setIsTyping(false);
-    }, 1000);
+    }
   };
-
-  function generateAIResponse(query: string, roleId: string) {
-    const q = query.toLowerCase();
-
-    if (roleId === ROLES.VENDOR) {
-      if (q.includes("revenue") || q.includes("sales")) {
-        return "💰 Total gross revenue today is ₹14,850 (+14.2% higher than yesterday). Top revenue contributor: Crispy Paneer Butter Masala Roll!";
-      }
-      if (q.includes("fastest") || q.includes("popular")) {
-        return "🔥 Cheese Samosa (890 orders) and Cold Coffee (654 orders) are currently trending fastest!";
-      }
-      if (q.includes("rush") || q.includes("peak")) {
-        return "⏰ Peak afternoon rush hour predicted between 3:15 PM - 4:45 PM. Recommend pre-frying 25 samosas and preparing 15 cold coffee bases!";
-      }
-      return "📊 Vendor AI: All queue systems synced. 5 active orders currently in prep queue.";
-    }
-
-    if (roleId === ROLES.CHEF) {
-      if (q.includes("prepare first") || q.includes("priority")) {
-        return "🍳 Priority 1: Token #24 (Crispy Paneer Roll) - 10 mins prep time. Priority 2: Token #25 (Cheese Samosa) - 5 mins prep time.";
-      }
-      if (q.includes("time") || q.includes("chole")) {
-        return "⏱️ Amritsari Chole Bhature requires ~10 mins prep time (4 mins bhatura fry + 6 mins chole simmer).";
-      }
-      if (q.includes("counter") || q.includes("ready")) {
-        return "🔔 Currently 2 orders placed at counter awaiting student pickup (Token #22 and Token #23).";
-      }
-      return "👨‍🍳 Kitchen AI: All burners operational. 3 orders in cooking status.";
-    }
-
-    if (roleId === ROLES.ADMIN) {
-      if (q.includes("health") || q.includes("status")) {
-        return "🛡️ All services 100% operational. Latency <24ms. Zero database or API errors logged.";
-      }
-      if (q.includes("active") || q.includes("orders")) {
-        return "📈 Total system volume today: 142 orders completed across 4 campus canteen zones.";
-      }
-      if (q.includes("user") || q.includes("roles")) {
-        return "👑 Active roles online: 340 Students, 3 Vendors, 4 Chefs, 2 System Administrators.";
-      }
-      return "🌐 Admin AI Overseer: Campus Ecosystem performing at peak 99.9% uptime.";
-    }
-
-    // Default Student Responses
-    if (q.includes("lunch") || q.includes("order") || q.includes("recommend")) {
-      return "😋 Highly recommended today: Crispy Paneer Butter Masala Roll (₹120) paired with Chilled Mango Lassi (₹60)! AI Match Score: 98%";
-    }
-    if (q.includes("protein") || q.includes("high")) {
-      return "💪 Best high-protein option under ₹100: Kadhai Paneer & Butter Naan Combo (18g Protein) or Punjab Aloo Paratha with Curd!";
-    }
-    if (q.includes("group") || q.includes("token")) {
-      return "👥 Click the 'Generate Group Token' button at the top of your menu to create a shareable room code (e.g. HOSTEL-ROOM-302) to pool orders with friends!";
-    }
-    return "✨ I'm here to help you order delicious food, check calorie counts, or track your token status!";
-  }
 
   const suggestedPrompts = getSuggestedPrompts(activeRole);
 

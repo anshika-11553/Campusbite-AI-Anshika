@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   MapPin,
   Users,
@@ -14,13 +14,15 @@ import {
   TrendingUp,
 } from "lucide-react";
 
+import { api } from "@/lib/api";
+
 export interface StallInfo {
   id: string;
   name: string;
   location: string;
   queueLength: number;
   avgWaitMins: number;
-  status: "LOW" | "MODERATE" | "HIGH";
+  status: "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
   popularDishes: string[];
 }
 
@@ -32,65 +34,97 @@ interface CrowdMapProps {
 export const INITIAL_STALLS: StallInfo[] = [
   {
     id: "stall-a",
-    name: "Stall A - Main Food Court",
+    name: "Stall A - Beverages & Snacks",
     location: "North Academic Block",
-    queueLength: 28,
-    avgWaitMins: 22,
-    status: "HIGH",
-    popularDishes: ["Paneer Roll", "Chole Bhature"],
-  },
-  {
-    id: "stall-b",
-    name: "Stall B - South Block Express",
-    location: "Science Complex, Floor 1",
-    queueLength: 3,
-    avgWaitMins: 4,
+    queueLength: 0,
+    avgWaitMins: 3,
     status: "LOW",
     popularDishes: ["Cold Coffee", "Cheese Samosa"],
   },
   {
+    id: "stall-b",
+    name: "Stall B - Main Course Express",
+    location: "Central Dining Hall",
+    queueLength: 0,
+    avgWaitMins: 5,
+    status: "LOW",
+    popularDishes: ["Paneer Roll", "Chole Bhature"],
+  },
+  {
     id: "stall-c",
-    name: "Stall C - Tech Hub Snack Corner",
-    location: "Engineering Library Lawn",
-    queueLength: 11,
-    avgWaitMins: 10,
-    status: "MODERATE",
+    name: "Stall C - Tech Hub Noodle Corner",
+    location: "Engineering Complex, Floor 1",
+    queueLength: 0,
+    avgWaitMins: 4,
+    status: "LOW",
     popularDishes: ["Chilli Garlic Noodles", "Peri Peri Fries"],
   },
   {
     id: "stall-d",
-    name: "Stall D - Hostel Arcade Canteen",
-    location: "Hostel Zone 3 Courtyard",
-    queueLength: 1,
+    name: "Stall D - South Indian & Shakes",
+    location: "Library Courtyard Lawn",
+    queueLength: 0,
     avgWaitMins: 2,
     status: "LOW",
-    popularDishes: ["Veg Momos", "Kullad Chai"],
+    popularDishes: ["Masala Dosa", "Mango Lassi"],
   },
 ];
 
 export const CrowdMap: React.FC<CrowdMapProps> = ({ selectedStallId, onSelectStall }) => {
-  const [stalls] = useState<StallInfo[]>(INITIAL_STALLS);
+  const [stalls, setStalls] = useState<StallInfo[]>(INITIAL_STALLS);
+  const [stallRec, setStallRec] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchCrowdData = async () => {
+      const intel = await api.getIntelligence();
+      if (intel && Array.isArray(intel.stallMetrics) && intel.stallMetrics.length > 0) {
+        setStalls(intel.stallMetrics);
+      }
+    };
+
+    fetchCrowdData();
+    const interval = setInterval(fetchCrowdData, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    api.getStallRecommendation(selectedStallId).then((res) => {
+      if (res) setStallRec(res);
+    });
+  }, [selectedStallId]);
+
   const activeStall = stalls.find((s) => s.id === selectedStallId) || stalls[0];
 
-  const getStatusConfig = (status: "LOW" | "MODERATE" | "HIGH") => {
+  const getStatusConfig = (status: "LOW" | "MODERATE" | "HIGH" | "CRITICAL" | string) => {
     switch (status) {
+      case "CRITICAL":
+        return {
+          bg: "bg-red-100 border-red-300 text-red-800",
+          badgeBg: "bg-red-700 text-white font-black",
+          text: "CRITICAL QUEUE • Extreme Delays 🔴",
+        };
+      case "HEAVY":
+      case "BUSY":
       case "HIGH":
         return {
-          bg: "bg-red-50 border-red-200 text-red-700",
-          badgeBg: "bg-red-600 text-white",
-          text: "Heavy Crowded • Longer Delays 🔴",
+          bg: "bg-orange-50 border-orange-200 text-orange-800",
+          badgeBg: "bg-orange-600 text-white font-black",
+          text: "HEAVY CROWD • Longer Wait 🟠",
         };
       case "MODERATE":
+      case "MEDIUM":
         return {
           bg: "bg-amber-50 border-amber-200 text-amber-800",
-          badgeBg: "bg-amber-500 text-white",
-          text: "Moderate Queue • 10 min wait 🟡",
+          badgeBg: "bg-amber-500 text-white font-black",
+          text: "MODERATE QUEUE • ~10 min wait 🟡",
         };
+      case "FAST QUEUE":
       case "LOW":
+      default:
         return {
           bg: "bg-emerald-50 border-emerald-200 text-emerald-800",
-          badgeBg: "bg-emerald-600 text-white",
-          text: "Fast Express Queue • Quick Pickup 🟢",
+          badgeBg: "bg-emerald-600 text-white font-black",
+          text: "FAST QUEUE • Quick Pickup 🟢",
         };
     }
   };
@@ -122,27 +156,34 @@ export const CrowdMap: React.FC<CrowdMapProps> = ({ selectedStallId, onSelectSta
         </div>
       </div>
 
-      {/* High Crowding Smart Reroute Alert */}
-      {activeStall.status === "HIGH" && (
-        <div className="p-4 rounded-2xl bg-red-50 border border-red-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in">
+      {/* AI Stall Recommendation Engine Guidance Banner */}
+      {stallRec && stallRec.is_faster_alternate_available && (
+        <div className="p-4 rounded-2xl bg-purple-50 border border-purple-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in">
           <div className="flex items-start gap-3">
-            <ShieldAlert className="w-6 h-6 text-red-600 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="text-xs font-black text-red-900 uppercase tracking-wide">
-                ⚠️ High Crowding Alert: {activeStall.name}
-              </h4>
-              <p className="text-xs text-red-700 mt-0.5">
-                Current queue has <strong>{activeStall.queueLength} students</strong> (~{activeStall.avgWaitMins} mins wait).
-                AI recommends switching to <strong>Stall D (Hostel Zone)</strong> for 2-minute instant pickup!
+            <div className="p-2 bg-purple-600 text-white rounded-xl shadow-sm">
+              <Sparkles className="w-5 h-5 animate-pulse" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-purple-900 uppercase tracking-wider">AI Stall Recommendation Engine</span>
+                <span className="px-2 py-0.5 text-[10px] font-extrabold bg-purple-600 text-white rounded-md">
+                  ~{stallRec.time_saved_minutes} mins faster
+                </span>
+              </div>
+              <p className="text-xs text-purple-950 font-bold">
+                {stallRec.reason}
+              </p>
+              <p className="text-xs text-purple-700 font-semibold">
+                Estimated Ready Time: <span className="font-black text-slate-900">{stallRec.estimated_ready}</span>
               </p>
             </div>
           </div>
 
           <button
-            onClick={() => onSelectStall("stall-d")}
-            className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs shrink-0 flex items-center gap-1.5 shadow-md transition-all hover:scale-[1.02]"
+            onClick={() => onSelectStall(stallRec.recommended_stall_id || "stall-d")}
+            className="px-4 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-xs shrink-0 flex items-center gap-1.5 shadow-md transition-all hover:scale-[1.02]"
           >
-            <span>Reroute to Stall D (2 min wait)</span>
+            <span>Switch to {stallRec.recommended_stall?.split(" - ")[0] || "Stall D"}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

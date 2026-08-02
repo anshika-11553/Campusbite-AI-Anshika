@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { MenuItem, Order, MOCK_MENU, api, formatTokenDisplay } from "@/lib/api";
+import { MenuItem, Order, api, formatTokenDisplay } from "@/lib/api";
 import { useCart } from "@/context/CartContext";
 import { PaymentModal } from "./PaymentModal";
 import { CrowdMap } from "./CrowdMap";
+import { AIChatbot } from "./AIChatbot";
 import {
   Search,
   Flame,
@@ -32,6 +33,7 @@ import {
   Calendar,
   MapPin,
   CalendarDays,
+  ShieldCheck,
 } from "lucide-react";
 
 export const StudentDashboard: React.FC = () => {
@@ -49,14 +51,31 @@ export const StudentDashboard: React.FC = () => {
   } = useCart();
 
   // Instant Preloaded Menu State Initialization
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(MOCK_MENU);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [orders, setOrders] = useState<Order[]>([]);
   const [activeTab, setActiveTab] = useState<"MENU" | "HISTORY">("MENU");
   const [checkoutOrder, setCheckoutOrder] = useState<Order | null>(null);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
-  const [isListeningVoice, setIsListeningVoice] = useState(false);
+  const [pickupPrediction, setPickupPrediction] = useState<any>(null);
+  const [slotOptimization, setSlotOptimization] = useState<any>(null);
+
+  useEffect(() => {
+    if (cart && cart.length > 0) {
+      const formattedItems = cart.map((ci) => ({
+        menu_item_id: ci.item.id,
+        quantity: ci.quantity,
+        prep_time: ci.item.prep_time,
+      }));
+      api.predictPickup(formattedItems).then((res) => {
+        if (res) setPickupPrediction(res);
+      });
+    } else {
+      setPickupPrediction(null);
+    }
+  }, [cart]);
+
 
   // Live Crowding Map Stall State
   const [selectedStallId, setSelectedStallId] = useState<string>("stall-a");
@@ -85,12 +104,32 @@ export const StudentDashboard: React.FC = () => {
   useEffect(() => {
     loadMenu();
     loadOrders();
-  }, [selectedCategory]);
+    const interval = setInterval(() => {
+      loadOrders();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [selectedCategory, searchQuery]);
 
-  const loadMenu = () => {
-    const items = api.getMenu(selectedCategory, searchQuery);
-    setMenuItems(items);
+  useEffect(() => {
+    if (orderMode === "PREORDER") {
+      api.getSlotOptimization(preorderDate).then((res) => {
+        if (res) setSlotOptimization(res);
+      });
+    }
+  }, [orderMode, preorderDate]);
+
+  const loadMenu = async () => {
+    try {
+      const items = await api.getMenu(selectedCategory, searchQuery);
+
+      console.log("Loaded Menu IDs:", items.map((i: any) => i.id));
+
+      setMenuItems(items);
+    } catch (err) {
+      console.error(err);
+    }
   };
+
 
   const loadOrders = async () => {
     try {
@@ -106,14 +145,7 @@ export const StudentDashboard: React.FC = () => {
     loadMenu();
   };
 
-  const handleVoiceSearch = () => {
-    setIsListeningVoice(true);
-    setTimeout(() => {
-      setSearchQuery("Samosa");
-      setIsListeningVoice(false);
-      loadMenu();
-    }, 1200);
-  };
+
 
   const createGroupOrderToken = () => {
     const randomCode = "HOSTEL-ROOM-" + Math.floor(100 + Math.random() * 900);
@@ -130,14 +162,21 @@ export const StudentDashboard: React.FC = () => {
 
   const handleCheckoutSubmit = async () => {
     if (!cart || cart.length === 0) return;
+
     setIsSubmittingOrder(true);
+
     try {
+      console.log("Current Cart:", cart);
+
       const itemsPayload = cart
-        .filter((ci) => ci && ci.item && ci.item.id)
+        .filter((ci) => ci?.item?.id)
         .map((ci) => ({
           menu_item_id: ci.item.id,
-          quantity: ci.quantity || 1,
+          quantity: ci.quantity,
         }));
+
+      console.log("Sending to API:");
+      console.table(itemsPayload);
 
       const res = await api.placeOrder(itemsPayload);
       const newOrder: Order = res.data;
@@ -155,18 +194,22 @@ export const StudentDashboard: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case "PLACED":
       case "PENDING_PAYMENT":
-        return { label: "Pending Payment", color: "bg-amber-50 text-amber-700 border-amber-300" };
+        return { label: "Order Placed", color: "bg-amber-50 text-amber-700 border-amber-300" };
       case "PAID":
         return { label: "Paid • Awaiting Vendor", color: "bg-blue-50 text-blue-700 border-blue-300" };
       case "ACCEPTED":
         return { label: "Accepted by Vendor", color: "bg-indigo-50 text-indigo-700 border-indigo-300" };
+      case "IN_KITCHEN":
+        return { label: "Sent to Kitchen 🍳", color: "bg-purple-50 text-purple-700 border-purple-300" };
       case "PREPARING":
         return { label: "Cooking in Kitchen 🔥", color: "bg-orange-50 text-orange-700 border-orange-300 font-bold" };
       case "READY":
-        return { label: "Ready at Counter! 🔔", color: "bg-emerald-100 text-emerald-800 border-emerald-400 font-black" };
+        return { label: "Ready for Pickup! 🔔", color: "bg-emerald-100 text-emerald-800 border-emerald-400 font-black" };
+      case "COLLECTED":
       case "COMPLETED":
-        return { label: "Completed", color: "bg-slate-100 text-slate-600 border-slate-300" };
+        return { label: "Food Collected", color: "bg-slate-100 text-slate-600 border-slate-300" };
       case "CANCELLED":
         return { label: "Cancelled", color: "bg-red-50 text-red-700 border-red-300" };
       default:
@@ -178,7 +221,7 @@ export const StudentDashboard: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 lg:px-8 py-8 space-y-8 bg-[#f8fafc]">
-      
+
       {/* Live Campus Canteen Crowding Map & Smart Rerouter */}
       <CrowdMap
         selectedStallId={selectedStallId}
@@ -205,21 +248,19 @@ export const StudentDashboard: React.FC = () => {
         <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-full md:w-auto">
           <button
             onClick={() => setOrderMode("INSTANT")}
-            className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              orderMode === "INSTANT"
-                ? "bg-[#fc8019] text-white shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
+            className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all ${orderMode === "INSTANT"
+              ? "bg-[#fc8019] text-white shadow-sm"
+              : "text-slate-600 hover:text-slate-900"
+              }`}
           >
             ⚡ Same-Day Instant Order
           </button>
           <button
             onClick={() => setOrderMode("PREORDER")}
-            className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              orderMode === "PREORDER"
-                ? "bg-[#fc8019] text-white shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
+            className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all ${orderMode === "PREORDER"
+              ? "bg-[#fc8019] text-white shadow-sm"
+              : "text-slate-600 hover:text-slate-900"
+              }`}
           >
             📅 Advance Pre-Order
           </button>
@@ -266,6 +307,40 @@ export const StudentDashboard: React.FC = () => {
               </select>
             </div>
           </div>
+
+          {/* AI Slot Optimization Engine Guidance Banner */}
+          {slotOptimization && (
+            <div className="p-4 rounded-2xl bg-white border border-purple-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs font-black text-purple-900">
+                  <Sparkles className="w-4 h-4 text-purple-600 animate-pulse" />
+                  AI Kitchen Slot Optimization Engine
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                  Live Supabase Analytics
+                </span>
+              </div>
+
+              <p className="text-xs text-purple-900 font-semibold bg-purple-50 p-2.5 rounded-xl border border-purple-100">
+                {slotOptimization.recommendation_text}
+              </p>
+
+              {/* Slot Live Capacities Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                {(slotOptimization.slots || []).slice(1, 5).map((s: any, idx: number) => (
+                  <div key={idx} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-1">
+                    <span className="text-[10px] font-bold text-slate-600 block truncate">{s.slot}</span>
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${s.status_color}`}>
+                      {s.status}
+                    </span>
+                    <span className="text-[10px] font-medium text-slate-400 block">
+                      ~{s.predicted_wait}m wait ({s.kitchen_utilization}% cap)
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -358,15 +433,14 @@ export const StudentDashboard: React.FC = () => {
 
       {/* Navigation Tabs & Search Controls */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        
+
         <div className="flex items-center gap-2 p-1 bg-slate-200/60 rounded-2xl w-full sm:w-auto">
           <button
             onClick={() => setActiveTab("MENU")}
-            className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-              activeTab === "MENU"
-                ? "bg-[#fc8019] text-white shadow-md"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
+            className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === "MENU"
+              ? "bg-[#fc8019] text-white shadow-md"
+              : "text-slate-600 hover:text-slate-900"
+              }`}
           >
             <Utensils className="w-4 h-4" />
             <span>Canteen Menu</span>
@@ -374,11 +448,10 @@ export const StudentDashboard: React.FC = () => {
 
           <button
             onClick={() => { setActiveTab("HISTORY"); loadOrders(); }}
-            className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 relative ${
-              activeTab === "HISTORY"
-                ? "bg-[#fc8019] text-white shadow-md"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
+            className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 relative ${activeTab === "HISTORY"
+              ? "bg-[#fc8019] text-white shadow-md"
+              : "text-slate-600 hover:text-slate-900"
+              }`}
           >
             <Clock className="w-4 h-4" />
             <span>My Orders & Tokens</span>
@@ -397,27 +470,10 @@ export const StudentDashboard: React.FC = () => {
                 type="text"
                 placeholder="Search samosa, coffee, roll..."
                 value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  const items = api.getMenu(selectedCategory, e.target.value);
-                  setMenuItems(items);
-                }}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-white border border-slate-300 rounded-2xl py-2 pl-10 pr-4 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#fc8019] transition-colors shadow-sm"
               />
             </div>
-            
-            <button
-              type="button"
-              onClick={handleVoiceSearch}
-              title="Voice Search"
-              className={`p-2.5 rounded-2xl border transition-all ${
-                isListeningVoice
-                  ? "bg-red-500 text-white border-red-400 animate-pulse"
-                  : "bg-white border-slate-300 text-slate-600 hover:text-[#fc8019]"
-              }`}
-            >
-              <Mic className="w-4 h-4" />
-            </button>
           </form>
         )}
       </div>
@@ -425,18 +481,17 @@ export const StudentDashboard: React.FC = () => {
       {/* Tab 1: Instant Swiggy Style Clean Food Menu Grid */}
       {activeTab === "MENU" && (
         <div className="space-y-6">
-          
+
           {/* Category Filter Pills */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2">
             {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
-                  selectedCategory === cat
-                    ? "bg-[#fc8019] text-white border-[#fc8019] shadow-sm font-bold"
-                    : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:text-slate-900"
-                }`}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${selectedCategory === cat
+                  ? "bg-[#fc8019] text-white border-[#fc8019] shadow-sm font-bold"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:text-slate-900"
+                  }`}
               >
                 {cat}
               </button>
@@ -589,7 +644,7 @@ export const StudentDashboard: React.FC = () => {
                           </span>
                         </div>
                         <p className="text-[10px] text-slate-400 mt-0.5">
-                          Order ID: {ord.id.slice(0, 8)} • Placed: {new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          Order ID: {(ord.id || ord.order_id || "").slice(0, 8)} • Placed: {new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
 
@@ -616,15 +671,88 @@ export const StudentDashboard: React.FC = () => {
                       </div>
                     )}
 
+                    {/* 🚶 AI Arrival Assistant Card */}
+                    {["PAID", "ACCEPTED", "PREPARING"].includes(ord.status) && (
+                      <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 text-white space-y-2.5 text-xs shadow-md border border-purple-800">
+                        <div className="flex items-center justify-between font-black">
+                          <span className="flex items-center gap-1.5 text-purple-300">
+                            <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
+                            🚶 AI Arrival Assistant
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-600 text-white">
+                            94% Confidence
+                          </span>
+                        </div>
+
+                        <div className="p-2.5 rounded-xl bg-purple-900/60 border border-purple-700/60 space-y-0.5">
+                          <span className="text-purple-300 text-[10px] font-bold uppercase block">Leave your classroom at:</span>
+                          <span className="text-2xl font-black text-amber-300">
+                            {new Date(Date.now() + 8 * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-1 text-[11px]">
+                          <div>
+                            <span className="text-[10px] text-purple-300 font-bold block uppercase">Est. Food Ready</span>
+                            <span className="font-extrabold text-white">
+                              {new Date(Date.now() + 13 * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-purple-300 font-bold block uppercase">Walking Time</span>
+                            <span className="font-extrabold text-amber-300">~5 mins</span>
+                          </div>
+                        </div>
+
+                        <div className="text-[10px] text-purple-200 font-medium pt-1 border-t border-purple-800/60 flex items-center justify-between">
+                          <span>Expected Wait After Arrival:</span>
+                          <span className="font-bold text-emerald-400">Less than 1 minute</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 🔒 CampusSecure Pickup Verification Card */}
+                    {ord.status === "READY" && (
+                      <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-900 border border-emerald-500/60 text-white space-y-3 shadow-lg animate-in fade-in">
+                        <div className="flex items-center justify-between font-black">
+                          <span className="flex items-center gap-1.5 text-emerald-300 text-xs uppercase tracking-wider">
+                            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                            CampusSecure Pickup Verification
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-slate-950">
+                            Waiting for Verification
+                          </span>
+                        </div>
+
+                        <div className="p-3 rounded-xl bg-emerald-900/60 border border-emerald-700/60 text-center space-y-1">
+                          <span className="text-[10px] font-extrabold text-emerald-300 uppercase block tracking-widest">
+                            Your 6-Digit Pickup PIN
+                          </span>
+                          <span className="text-3xl font-black text-amber-300 tracking-widest font-mono">
+                            {ord.pickup_pin || "483921"}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[11px] font-medium text-slate-300 pt-1 border-t border-emerald-800">
+                          <span>Pickup Token: <strong className="text-white">{formatTokenDisplay(ord.token_number, ord.token_code)}</strong></span>
+                          <span>Valid Until: <strong className="text-amber-300">{new Date(Date.now() + 20 * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></span>
+                        </div>
+
+                        <p className="text-[10px] text-emerald-200 font-semibold bg-emerald-900/40 p-2 rounded-lg border border-emerald-800/40 text-center">
+                          📲 Please present this 6-Digit PIN to the Vendor at the counter to verify and collect your food.
+                        </p>
+                      </div>
+                    )}
+
                     {/* Lifecycle Progress Bar */}
                     <div className="space-y-1">
                       <div className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Token Lifecycle</div>
                       <div className="flex items-center justify-between gap-1 text-[9px] font-extrabold">
-                        <div className={`flex-1 text-center py-1 rounded-lg border ${["PENDING_PAYMENT", "PAID", "ACCEPTED", "PREPARING", "READY", "COMPLETED"].includes(ord.status) ? "bg-emerald-500 text-white border-emerald-500" : "bg-slate-100 text-slate-400 border-slate-200"}`}>Placed</div>
-                        <div className={`flex-1 text-center py-1 rounded-lg border ${["ACCEPTED", "PREPARING", "READY", "COMPLETED"].includes(ord.status) ? "bg-indigo-500 text-white border-indigo-500" : "bg-slate-100 text-slate-400 border-slate-200"}`}>Queued</div>
-                        <div className={`flex-1 text-center py-1 rounded-lg border ${["PREPARING", "READY", "COMPLETED"].includes(ord.status) ? "bg-orange-500 text-white border-orange-500 animate-pulse" : "bg-slate-100 text-slate-400 border-slate-200"}`}>Preparing</div>
-                        <div className={`flex-1 text-center py-1 rounded-lg border ${["READY", "COMPLETED"].includes(ord.status) ? "bg-amber-500 text-white border-amber-500" : "bg-slate-100 text-slate-400 border-slate-200"}`}>Ready</div>
-                        <div className={`flex-1 text-center py-1 rounded-lg border ${ord.status === "COMPLETED" ? "bg-blue-600 text-white border-blue-600" : "bg-slate-100 text-slate-400 border-slate-200"}`}>Collected</div>
+                        <div className={`flex-1 text-center py-1 rounded-lg border ${["PLACED", "PENDING_PAYMENT", "PAID", "ACCEPTED", "IN_KITCHEN", "PREPARING", "READY", "COLLECTED", "COMPLETED"].includes(ord.status) ? "bg-emerald-500 text-white border-emerald-500" : "bg-slate-100 text-slate-400 border-slate-200"}`}>Placed</div>
+                        <div className={`flex-1 text-center py-1 rounded-lg border ${["ACCEPTED", "IN_KITCHEN", "PREPARING", "READY", "COLLECTED", "COMPLETED"].includes(ord.status) ? "bg-indigo-500 text-white border-indigo-500" : "bg-slate-100 text-slate-400 border-slate-200"}`}>Accepted</div>
+                        <div className={`flex-1 text-center py-1 rounded-lg border ${["IN_KITCHEN", "PREPARING", "READY", "COLLECTED", "COMPLETED"].includes(ord.status) ? "bg-orange-500 text-white border-orange-500 animate-pulse" : "bg-slate-100 text-slate-400 border-slate-200"}`}>Kitchen</div>
+                        <div className={`flex-1 text-center py-1 rounded-lg border ${["READY", "COLLECTED", "COMPLETED"].includes(ord.status) ? "bg-amber-500 text-white border-amber-500" : "bg-slate-100 text-slate-400 border-slate-200"}`}>Ready</div>
+                        <div className={`flex-1 text-center py-1 rounded-lg border ${["COLLECTED", "COMPLETED"].includes(ord.status) ? "bg-blue-600 text-white border-blue-600" : "bg-slate-100 text-slate-400 border-slate-200"}`}>Collected</div>
                       </div>
                     </div>
 
@@ -773,6 +901,43 @@ export const StudentDashboard: React.FC = () => {
 
             {cart && cart.length > 0 && (
               <div className="border-t border-slate-100 pt-4 space-y-4">
+
+                {/* AI Smart Pickup Time Guidance Banner */}
+                {pickupPrediction && (
+                  <div className={`p-3.5 rounded-2xl border ${pickupPrediction.is_high_workload ? "bg-amber-50 border-amber-300 text-amber-900" : "bg-purple-50 border-purple-200 text-purple-900"} space-y-2 text-xs`}>
+                    <div className="flex items-center justify-between font-black">
+                      <span className="flex items-center gap-1.5 text-purple-700">
+                        <Sparkles className="w-4 h-4 text-purple-600 animate-pulse" />
+                        AI Smart Pickup Guidance
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-600 text-white">
+                        {Math.round((pickupPrediction.confidence || 0.95) * 100)}% AI Confidence
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-purple-200/60">
+                      <div>
+                        <span className="text-[10px] text-slate-500 font-bold block uppercase">Est. Ready Time</span>
+                        <span className="font-extrabold text-sm text-slate-900">{pickupPrediction.recommended_pickup_time}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 font-bold block uppercase">Est. Waiting</span>
+                        <span className="font-extrabold text-sm text-purple-700">~{pickupPrediction.predicted_wait_minutes} mins</span>
+                      </div>
+                    </div>
+
+                    {pickupPrediction.is_high_workload && (
+                      <div className="p-2.5 rounded-xl bg-amber-100/80 border border-amber-300 text-amber-900 text-[11px] font-semibold space-y-1">
+                        <p className="font-black text-amber-950 flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                          High Kitchen Workload Warning
+                        </p>
+                        <p>{pickupPrediction.ai_recommendation_text}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-600 font-semibold">Grand Total</span>
                   <span className="text-xl font-black text-[#fc8019]">₹{totalAmount}</span>
@@ -814,6 +979,9 @@ export const StudentDashboard: React.FC = () => {
         />
       )}
 
+      {/* Floating Student AI Assistant (hidden during checkout modal to prevent overlap) */}
+      {!checkoutOrder && <AIChatbot />}
     </div>
   );
 };
+

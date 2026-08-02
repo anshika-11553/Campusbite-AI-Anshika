@@ -22,11 +22,11 @@ export const Navbar: React.FC = () => {
   const getRoleConfig = (roleId: string) => {
     switch (roleId) {
       case ROLES.VENDOR:
-        return { name: "Vendor Hub", icon: Store, color: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+        return { name: "Vendor Portal", icon: Store, color: "bg-emerald-50 text-emerald-700 border-emerald-200" };
       case ROLES.CHEF:
-        return { name: "Chef Kitchen", icon: ChefHat, color: "bg-amber-50 text-amber-700 border-amber-200" };
+        return { name: "Chef Portal", icon: ChefHat, color: "bg-amber-50 text-amber-700 border-amber-200" };
       case ROLES.ADMIN:
-        return { name: "Admin Console", icon: ShieldCheck, color: "bg-purple-50 text-purple-700 border-purple-200" };
+        return { name: "Admin Portal", icon: ShieldCheck, color: "bg-purple-50 text-purple-700 border-purple-200" };
       default:
         return { name: "Student Portal", icon: UserCheck, color: "bg-orange-50 text-orange-700 border-orange-200" };
     }

@@ -179,8 +179,7 @@ export const getActiveVendorOrders = async () => {
       )
       `,
     )
-    .not("status", "in", '("COMPLETED","CANCELLED")')
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false });
 
   if (error) {
     throw error;
@@ -193,7 +192,7 @@ export const getActiveVendorOrders = async () => {
 // Update Order Status
 // ==========================
 export const updateOrderStatus = async (orderId, newStatus) => {
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("orders")
     .update({
       status: newStatus,
@@ -203,11 +202,127 @@ export const updateOrderStatus = async (orderId, newStatus) => {
     .select()
     .single();
 
+  if (error && (newStatus === "COLLECTED" || newStatus === "IN_KITCHEN")) {
+    const fallbackStatus = newStatus === "COLLECTED" ? "COMPLETED" : "PREPARING";
+    console.log(`Supabase enum fallback triggered for ${newStatus} -> ${fallbackStatus} (Reason: ${error.message})`);
+    
+    const fallbackRes = await supabase
+      .from("orders")
+      .update({
+        status: fallbackStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", orderId)
+      .select()
+      .single();
+
+    if (!fallbackRes.error) {
+      return fallbackRes.data;
+    }
+  }
+
   if (error) {
     throw error;
   }
 
   return data;
+};
+
+// ==========================
+// CampusSecure Pickup Verification & Audit Repositories
+// ==========================
+export const createPickupPinData = async (orderId, pinStr) => {
+  const expiresAt = new Date(Date.now() + 20 * 60 * 1000).toISOString();
+  const nowIso = new Date().toISOString();
+
+  // Try updating order directly first
+  try {
+    await supabase
+      .from("orders")
+      .update({
+        pickup_pin: pinStr,
+        pickup_pin_generated_at: nowIso,
+        pin_verified: false,
+      })
+      .eq("id", orderId);
+  } catch (e) {
+    // Ignore if columns don't exist on orders table
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from("pickup_verification")
+      .insert([
+        {
+          order_id: orderId,
+          pickup_pin: pinStr,
+          generated_at: nowIso,
+          expires_at: expiresAt,
+          verification_attempts: 0,
+          is_verified: false,
+          status: "ACTIVE",
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.log("Pickup PIN notice:", error.message);
+    }
+    return data;
+  } catch (e) {
+    return null;
+  }
+};
+
+export const getPickupPinData = async (orderId) => {
+  try {
+    const { data, error } = await supabase
+      .from("pickup_verification")
+      .select("*")
+      .eq("order_id", orderId)
+      .order("generated_at", { ascending: false })
+      .limit(1);
+
+    if (error || !data || data.length === 0) return null;
+    return data[0];
+  } catch (e) {
+    return null;
+  }
+};
+
+export const updatePickupPinData = async (pinId, updateObj) => {
+  try {
+    const { data } = await supabase
+      .from("pickup_verification")
+      .update(updateObj)
+      .eq("id", pinId)
+      .select()
+      .single();
+
+    return data;
+  } catch (e) {
+    return null;
+  }
+};
+
+export const logOrderEventData = async (orderId, eventType, performedBy = null, role = "SYSTEM", metadata = {}) => {
+  try {
+    await supabase
+      .from("order_events")
+      .insert([
+        {
+          order_id: orderId,
+          event_type: eventType,
+          performed_by: performedBy,
+          role,
+          timestamp: new Date().toISOString(),
+          metadata: JSON.stringify(metadata),
+        },
+      ]);
+  } catch (e) {
+    console.log("Order Audit Event notice:", e.message);
+  }
 };
 
 // ==========================

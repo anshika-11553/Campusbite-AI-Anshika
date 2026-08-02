@@ -1,9 +1,12 @@
 import express from "express";
 import {
   placeOrderController,
-  getStudentOrderHistoryController,
-  getStudentOrderDetailsController,
+  getUserOrdersController,
+  getOrderDetailsController,
   updateOrderStatusController,
+  verifyPickupPinController,
+  regeneratePickupPinController,
+  getPickupPinController,
 } from "../controllers/order.controller.js";
 import { authenticateUser } from "../middleware/auth.middleware.js";
 import { authorizeRoles } from "../middleware/role.middleware.js";
@@ -17,7 +20,7 @@ const router = express.Router();
 router.post(
   "/",
   authenticateUser,
-  authorizeRoles(ROLES.STUDENT),
+  authorizeRoles(ROLES.STUDENT, ROLES.VENDOR, ROLES.CHEF, ROLES.ADMIN),
   placeOrderController
 );
 
@@ -27,8 +30,8 @@ router.post(
 router.get(
   "/",
   authenticateUser,
-  authorizeRoles(ROLES.STUDENT),
-  getStudentOrderHistoryController
+  authorizeRoles(ROLES.STUDENT, ROLES.VENDOR, ROLES.CHEF, ROLES.ADMIN),
+  getUserOrdersController
 );
 
 // ==========================
@@ -37,8 +40,8 @@ router.get(
 router.get(
   "/:id",
   authenticateUser,
-  authorizeRoles(ROLES.STUDENT),
-  getStudentOrderDetailsController
+  authorizeRoles(ROLES.STUDENT, ROLES.VENDOR, ROLES.CHEF, ROLES.ADMIN),
+  getOrderDetailsController
 );
 
 // ==========================
@@ -47,8 +50,32 @@ router.get(
 router.patch(
   "/:id/status",
   authenticateUser,
-  authorizeRoles(ROLES.VENDOR, ROLES.CHIEF, ROLES.ADMIN),
+  authorizeRoles(ROLES.STUDENT, ROLES.VENDOR, ROLES.CHEF, ROLES.ADMIN),
   updateOrderStatusController
+);
+
+// ==========================
+// CampusSecure Pickup Verification Routes
+// ==========================
+router.post(
+  "/:id/verify-pickup-pin",
+  authenticateUser,
+  authorizeRoles(ROLES.STUDENT, ROLES.VENDOR, ROLES.CHEF, ROLES.ADMIN),
+  verifyPickupPinController
+);
+
+router.post(
+  "/:id/regenerate-pickup-pin",
+  authenticateUser,
+  authorizeRoles(ROLES.STUDENT, ROLES.VENDOR, ROLES.CHEF, ROLES.ADMIN),
+  regeneratePickupPinController
+);
+
+router.get(
+  "/:id/pickup-pin",
+  authenticateUser,
+  authorizeRoles(ROLES.STUDENT, ROLES.VENDOR, ROLES.CHEF, ROLES.ADMIN),
+  getPickupPinController
 );
 
 export default router;

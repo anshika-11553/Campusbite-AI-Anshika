@@ -1,5 +1,13 @@
 import { registerUser, loginUser } from "../repositories/auth.repository.js";
 import { createCampusUser } from "../repositories/user.repository.js";
+import { ROLES } from "../constants/roles.js";
+
+const DEMO_PROFILES = {
+  "student@campusbite.ai": { name: "Campus Student", role_id: ROLES.STUDENT },
+  "vendor@campusbite.ai": { name: "Campus Canteen Vendor", role_id: ROLES.VENDOR },
+  "chef@campusbite.ai": { name: "Campus Kitchen Chef", role_id: ROLES.CHEF },
+  "admin@campusbite.ai": { name: "Campus Admin Director", role_id: ROLES.ADMIN },
+};
 
 // ==========================
 // Register
@@ -71,6 +79,34 @@ export const login = async (credentials) => {
     return result;
   } catch (error) {
     console.error("========== LOGIN FAILED ==========");
+
+    // Auto-provision demo account if first-time demo login
+    const emailLower = credentials.email?.toLowerCase()?.trim();
+    if (emailLower && DEMO_PROFILES[emailLower]) {
+      console.log(`Auto-registering demo user: ${emailLower}...`);
+      try {
+        const demoInfo = DEMO_PROFILES[emailLower];
+        const authData = await registerUser({
+          email: emailLower,
+          password: credentials.password || "123456",
+          full_name: demoInfo.name,
+        });
+
+        if (authData?.user) {
+          await createCampusUser({
+            auth_user_id: authData.user.id,
+            full_name: demoInfo.name,
+            email: emailLower,
+            role_id: demoInfo.role_id,
+          });
+
+          return await loginUser(credentials);
+        }
+      } catch (regErr) {
+        console.error("Demo auto-provision error:", regErr);
+      }
+    }
+
     console.error("Message:", error.message);
     console.error("Code:", error.code);
     console.error("Details:", error.details);

@@ -1,4 +1,5 @@
 import supabase from "../config/supabase.js";
+import { ROLES } from "../constants/roles.js";
 
 export const authenticateUser = async (req, res, next) => {
   try {
@@ -34,7 +35,7 @@ export const authenticateUser = async (req, res, next) => {
     // ==========================
     // Get User from Database
     // ==========================
-    const { data: campusUser, error: profileError } = await supabase
+    let { data: campusUser, error: profileError } = await supabase
       .from("users")
       .select("*")
       .eq("auth_user_id", user.id)
@@ -47,15 +48,38 @@ export const authenticateUser = async (req, res, next) => {
       });
     }
 
+    // Auto-sync role_id based on email pattern
+    const email = (campusUser.email || user.email || "").toLowerCase();
+    let expectedRoleId = campusUser.role_id;
+
+    if (email.includes("vendor")) {
+      expectedRoleId = ROLES.VENDOR;
+    } else if (email.includes("chef")) {
+      expectedRoleId = ROLES.CHEF;
+    } else if (email.includes("admin")) {
+      expectedRoleId = ROLES.ADMIN;
+    }
+
+    if (expectedRoleId && expectedRoleId !== campusUser.role_id) {
+      await supabase
+        .from("users")
+        .update({ role_id: expectedRoleId })
+        .eq("id", campusUser.id);
+
+      campusUser.role_id = expectedRoleId;
+    }
+
     req.user = campusUser;
 
     next();
   } catch (error) {
-    console.error(error);
+    console.error("Auth Middleware Notice:", error.message);
 
-    return res.status(500).json({
+    return res.status(401).json({
       success: false,
-      message: error.message,
+      message: "Authentication failed. Invalid or expired token.",
+      errorCode: "UNAUTHORIZED",
+      timestamp: new Date().toISOString(),
     });
   }
 };
